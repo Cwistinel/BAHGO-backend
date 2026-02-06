@@ -1,1 +1,1 @@
-BAHGO Backend
+Bahgo backend
