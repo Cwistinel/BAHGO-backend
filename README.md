@@ -1,2 +1,2 @@
-This is pissing me off
+Using Firebase as backend instead of Supabase
 
