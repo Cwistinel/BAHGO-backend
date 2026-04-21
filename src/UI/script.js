@@ -1,4 +1,7 @@
-const API_BASE_URL = window.BAHGO_API_BASE_URL || localStorage.getItem('bahgoApiBaseUrl') || 'http://localhost:5000/api';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 let authToken = localStorage.getItem('bahgoAuthToken') || null;
 
 async function apiRequest(path, options = {}) {
@@ -113,17 +116,12 @@ function initBahgoApp() {
         try {
             loginBtn.disabled = true;
             loginBtn.textContent = 'Signing in...';
-            const user = await apiLogin(email, password);
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = { email: userCredential.user.email, name: 'Admin' };
+            authToken = await userCredential.user.getIdToken();
+            localStorage.setItem('bahgoAuthToken', authToken);
             // Successful login
-            currentUserEmail = user.email || email;
-            localStorage.setItem('bahgoUserName', user.name || 'Admin');
-            localStorage.setItem('bahgoUserEmail', currentUserEmail);
-            document.getElementById('userName').textContent = user.name || 'Admin';
-            document.getElementById('settingsName').value = user.name || 'Admin';
-            document.getElementById('settingsEmail').value = currentUserEmail;
-            if (document.getElementById('rem').checked) {
-                localStorage.setItem('bahgoEmail', email);
-            }
+            currentUserEmail = user.email;
             document.getElementById('loginScreen').classList.remove('active');
             document.getElementById('dashboardScreen').classList.add('active');
             switchPage('overview');
@@ -137,7 +135,8 @@ function initBahgoApp() {
         }
     });
 
-    document.getElementById('logoutBtn').addEventListener('click', function() {
+    document.getElementById('logoutBtn').addEventListener('click', async function() {
+        await signOut(auth);
         currentUserEmail = null;
         authToken = null;
         localStorage.removeItem('bahgoAuthToken');
@@ -161,17 +160,20 @@ function initBahgoApp() {
         const name = document.getElementById('settingsName').value;
         const email = document.getElementById('settingsEmail').value;
         try {
-            await apiUpdateProfile(name, email);
+            await setDoc(doc(db, 'users', 'admin'), {
+                name: name,
+                email: email,
+                role: 'Developer',
+                updatedAt: new Date().toISOString()
+            });
+            if (email !== currentUserEmail) currentUserEmail = email;
+            localStorage.setItem('bahgoUserName', name);
+            localStorage.setItem('bahgoUserEmail', email);
+            document.getElementById('userName').textContent = name;
+            alert('Profile saved!');
         } catch (err) {
-            console.warn('Profile update endpoint unavailable or failed:', err);
-            alert(`Could not update profile in backend: ${err.message}`);
-            return;
+            alert(`Could not save profile: ${err.message}`);
         }
-        if (email !== currentUserEmail) currentUserEmail = email;
-        localStorage.setItem('bahgoUserName', name);
-        localStorage.setItem('bahgoUserEmail', email);
-        document.getElementById('userName').textContent = name;
-        alert('Profile saved!');
     });
 
     document.getElementById('saveNotif').addEventListener('click', async function() {
@@ -213,12 +215,17 @@ function initBahgoApp() {
         document.getElementById('email').checked = prefs.email;
     }
 
-    if (authToken) {
-        document.getElementById('loginScreen').classList.remove('active');
-        document.getElementById('dashboardScreen').classList.add('active');
-        switchPage('overview');
-        loadStations();
-    }
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            document.getElementById('loginScreen').classList.remove('active');
+            document.getElementById('dashboardScreen').classList.add('active');
+            switchPage('overview');
+            loadStations();
+        } else {
+            document.getElementById('dashboardScreen').classList.remove('active');
+            document.getElementById('loginScreen').classList.add('active');
+        }
+    });
 
     updateClock();
     setInterval(updateClock, 1000);
@@ -340,6 +347,9 @@ async function loadStations() {
         renderTable();
         updateCounts();
     } catch (err) {
-        alert(`Could not load stations from backend: ${err.message}`);
+        console.warn('Backend not available:', err.message);
+        renderStations();
+        renderTable();
+        updateCounts();
     }
 }
