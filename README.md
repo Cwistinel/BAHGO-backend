@@ -4,7 +4,7 @@
 
 # Bahgo - Flood Detection Monitoring System
 
-Bahgo is a real-time flood detection and monitoring system designed to provide instant alerts and water level data to administrators. It combines IoT sensors (ESP32) with a web-based admin dashboard to monitor flood-prone areas and respond quickly to rising water levels.
+Bahgo is a real-time flood detection and monitoring system designed to provide instant alerts and water level data. It combines IoT sensors (ESP32) with a web-based dashboard to monitor flood-prone areas and respond quickly to rising water levels.
 
 The system collects water level and precipitation data from physical sensors and displays it live on a secure, admin-only dashboard. Stations are classified as Normal, Warning, or Critical based on sensor readings, allowing administrators to make fast, informed decisions during flood events.
 
@@ -42,22 +42,11 @@ The system uses an **ESP32 microcontroller** with:
 - **Rain sensor** — detects precipitation
 
 The ESP32 sends data every 5 seconds to Firebase Realtime Database, which the dashboard reads in real time.
-
-### Hardware Pins
-| Component | Pin |
-|---|---|
-| Ultrasonic TRIG | 5 |
-| Ultrasonic ECHO | 18 |
-| Rain Sensor | 34 |
-| Green LED | 14 |
-| Blue LED | 27 |
-| Red LED | 26 |
-
 ---
 
 ## Authentication
 
-This system uses **admin-only authentication**. Only the pre-registered admin account in Firebase Auth can log in. User sign-ups are disabled.
+This web app uses **admin-only authentication**. Only the pre-registered admin account in Firebase Auth can log in. User sign-ups are disabled.
 
 ---
 
