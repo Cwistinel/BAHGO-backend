@@ -37,18 +37,6 @@ function normalizeStation(s, idx) {
     };
 }
 
-async function apiLogin(email, password) {
-    const payload = await apiRequest('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-    });
-    authToken = payload.token || payload.accessToken || null;
-    if (!authToken) {
-        throw new Error('Login succeeded but backend did not return a token.');
-    }
-    localStorage.setItem('bahgoAuthToken', authToken);
-    return payload.user || { email, name: payload.name || 'Admin' };
-}
 
 async function apiGetStations() {
     const payload = await apiRequest('/stations');
@@ -65,12 +53,6 @@ async function apiGetHistory(id) {
     return { history };
 }
 
-async function apiUpdateProfile(name, email) {
-    return apiRequest('/users/me', {
-        method: 'PUT',
-        body: JSON.stringify({ name, email })
-    });
-}
 
 async function apiUpdateNotificationSettings(prefs) {
     return apiRequest('/users/me/notifications', {
