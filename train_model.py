@@ -6,10 +6,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import pickle
 
-# ===== LOAD DATA =====
 df = pd.read_csv('bahgo_training_data.csv')
 
-# For linear regression, predict water_level (continuous) from precipitation and rise_rate
 X = df[['precipitation', 'rise_rate']]
 y = df['water_level']
 
@@ -24,7 +22,6 @@ model.fit(X_train_scaled, y_train)
 
 y_pred = model.predict(X_test_scaled)
 
-# ===== RESIDUAL PLOT =====
 residuals = y_test - y_pred
 
 plt.figure(figsize=(10, 6))
@@ -37,10 +34,7 @@ plt.tight_layout()
 plt.savefig('residual_plot.png')
 plt.show()
 
-# ===== SAVE MODEL =====
 with open('bahgo_linear_model.pkl', 'wb') as f:
     pickle.dump(model, f)
 with open('bahgo_scaler.pkl', 'wb') as f:
     pickle.dump(scaler, f)
-
-print("Linear regression model and plot saved!")
