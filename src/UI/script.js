@@ -1,16 +1,19 @@
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth, db } from '../firebase';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence } from 'firebase/auth';
+import { auth, db, rtdb } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { ref, onValue } from 'firebase/database';
+
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
-let authToken = localStorage.getItem('bahgoAuthToken') || null;
+let stationsUnsubscribe = null;
 
 async function apiRequest(path, options = {}) {
     const headers = {
         ...(options.headers || {})
     };
 
-    if (authToken) {
-        headers.Authorization = `Bearer ${authToken}`;
+    if (auth.currentUser) {
+        const freshToken = await auth.currentUser.getIdToken();
+        headers.Authorization = `Bearer ${freshToken}`;
     }
 
     if (options.body && !headers['Content-Type']) {
@@ -25,75 +28,34 @@ async function apiRequest(path, options = {}) {
     return res.json();
 }
 
-function normalizeStation(s, idx) {
-    return {
-        id: s.id ?? s._id ?? idx + 1,
-        name: s.name ?? s.stationName ?? `Station ${idx + 1}`,
-        level: s.level ?? s.waterLevel ?? 0,
-        precip: s.precip ?? s.precipitation ?? 0,
-        rate: s.rate ?? s.riseRate ?? 0,
-        status: (s.status || 'safe').toLowerCase(),
-        timestamp: s.timestamp ?? s.updatedAt ?? new Date().toISOString()
-    };
-}
-
-async function apiLogin(email, password) {
-    const payload = await apiRequest('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-    });
-    authToken = payload.token || payload.accessToken || null;
-    if (!authToken) {
-        throw new Error('Login succeeded but backend did not return a token.');
-    }
-    localStorage.setItem('bahgoAuthToken', authToken);
-    return payload.user || { email, name: payload.name || 'Admin' };
-}
-
-async function apiGetStations() {
-    const payload = await apiRequest('/stations');
-    const raw = Array.isArray(payload) ? payload : (payload.stations || []);
-    return raw.map(normalizeStation);
-}
-
-async function apiGetHistory(id) {
-    const payload = await apiRequest(`/stations/${id}/history`);
-    const source = payload.history || payload.data || payload.points || [];
-    const history = Array.isArray(source)
-        ? source.map((item, idx) => (typeof item === 'number' ? item : (item.level ?? item.value ?? idx)))
-        : [];
-    return { history };
-}
-
-async function apiUpdateProfile(name, email) {
-    return apiRequest('/users/me', {
-        method: 'PUT',
-        body: JSON.stringify({ name, email })
-    });
-}
-
 async function apiUpdateNotificationSettings(prefs) {
     return apiRequest('/users/me/notifications', {
         method: 'PUT',
         body: JSON.stringify(prefs)
     });
 }
+
 let stations = [];
 let stationChart = null;
-let currentUserEmail = null;
+
+function showDashboard() {
+    document.getElementById('loginScreen').classList.remove('active');
+    document.getElementById('dashboardScreen').classList.add('active');
+    switchPage('overview');
+    loadStations();
+}
 
 function initBahgoApp() {
     if (window.__bahgoInitialized) return;
     window.__bahgoInitialized = true;
-    console.log('DOM loaded');
     
     document.getElementById('loginBtn').addEventListener('click', async function() {
-        console.log('Login clicked');
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPass').value;
         const loginBtn = document.getElementById('loginBtn');
         const emailErrorDiv = document.getElementById('emailError');
         const passwordErrorDiv = document.getElementById('passwordError');
+        
         emailErrorDiv.style.display = 'none';
         passwordErrorDiv.style.display = 'none';
         
@@ -102,30 +64,25 @@ function initBahgoApp() {
             emailErrorDiv.style.display = 'block';
             return;
         }
+        
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             emailErrorDiv.textContent = 'Please enter a valid email address';
             emailErrorDiv.style.display = 'block';
             return;
         }
+        
         if (!password) {
             passwordErrorDiv.textContent = 'Please enter a password';
             passwordErrorDiv.style.display = 'block';
             return;
         }
+        
         try {
             loginBtn.disabled = true;
             loginBtn.textContent = 'Signing in...';
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const user = { email: userCredential.user.email, name: 'Admin' };
-            authToken = await userCredential.user.getIdToken();
-            localStorage.setItem('bahgoAuthToken', authToken);
-            // Successful login
-            currentUserEmail = user.email;
-            document.getElementById('loginScreen').classList.remove('active');
-            document.getElementById('dashboardScreen').classList.add('active');
-            switchPage('overview');
-            await loadStations();
+            await setPersistence(auth, browserSessionPersistence);
+            await signInWithEmailAndPassword(auth, email, password);
         } catch (err) {
             passwordErrorDiv.textContent = err.message || 'Login failed.';
             passwordErrorDiv.style.display = 'block';
@@ -137,13 +94,8 @@ function initBahgoApp() {
 
     document.getElementById('logoutBtn').addEventListener('click', async function() {
         await signOut(auth);
-        currentUserEmail = null;
-        authToken = null;
-        localStorage.removeItem('bahgoAuthToken');
-        document.getElementById('dashboardScreen').classList.remove('active');
-        document.getElementById('loginScreen').classList.add('active');
-        document.getElementById('loginEmail').value = '';
-        document.getElementById('loginPass').value = '';
+        if (stationsUnsubscribe) stationsUnsubscribe();
+        stationsUnsubscribe = null;
     });
 
     document.querySelectorAll('.nav-btn[data-page]').forEach(btn => {
@@ -166,7 +118,6 @@ function initBahgoApp() {
                 role: 'Developer',
                 updatedAt: new Date().toISOString()
             });
-            if (email !== currentUserEmail) currentUserEmail = email;
             localStorage.setItem('bahgoUserName', name);
             localStorage.setItem('bahgoUserEmail', email);
             document.getElementById('userName').textContent = name;
@@ -197,10 +148,6 @@ function initBahgoApp() {
         renderTable(e.target.value);
     });
 
-    if (localStorage.getItem('bahgoEmail')) {
-        document.getElementById('loginEmail').value = localStorage.getItem('bahgoEmail');
-        document.getElementById('rem').checked = true;
-    }
     if (localStorage.getItem('bahgoUserName')) {
         document.getElementById('userName').textContent = localStorage.getItem('bahgoUserName');
         document.getElementById('settingsName').value = localStorage.getItem('bahgoUserName');
@@ -217,13 +164,13 @@ function initBahgoApp() {
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            document.getElementById('loginScreen').classList.remove('active');
-            document.getElementById('dashboardScreen').classList.add('active');
-            switchPage('overview');
-            loadStations();
+            showDashboard();
         } else {
             document.getElementById('dashboardScreen').classList.remove('active');
             document.getElementById('loginScreen').classList.add('active');
+            
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPass').value = '';
         }
     });
 
@@ -239,23 +186,30 @@ function switchPage(pageId) {
 }
 
 function updateCounts() {
-    document.getElementById('criticalCount').textContent = stations.filter(s => s.status === 'critical').length;
-    document.getElementById('warningCount').textContent = stations.filter(s => s.status === 'warning').length;
-    document.getElementById('normalCount').textContent = stations.filter(s => s.status === 'safe').length;
-    document.getElementById('activeCount').textContent = stations.length;
-    document.getElementById('offlineCount').textContent = 0;
+    const critical = stations.filter(s => s.status === 'critical').length;
+    const warning = stations.filter(s => s.status === 'warning').length;
+    const normal = stations.filter(s => s.status === 'safe').length;
+    const offline = stations.filter(s => s.status === 'offline').length;
+    
+    const active = stations.length - offline;
+
+    document.getElementById('criticalCount').textContent = critical;
+    document.getElementById('warningCount').textContent = warning;
+    document.getElementById('normalCount').textContent = normal;
+    document.getElementById('activeCount').textContent = active;
+    document.getElementById('offlineCount').textContent = offline;
 }
 
 function renderStations() {
     const grid = document.getElementById('stationGrid');
     grid.innerHTML = stations.map(s => `
-        <div class="station-card" onclick="openStationModal(${s.id})">
+        <div class="station-card" onclick="openStationModal('${s.id}')">
             <div class="s-header">
                 <div>
                     <h3>${s.name}</h3>
                     <p style="font-size: 0.75rem; color: #888;">${new Date(s.timestamp).toLocaleString()}</p>
                 </div>
-                <span class="dot ${s.status === 'safe' ? 'green' : s.status === 'warning' ? 'yellow' : 'red'}"></span>
+                <span class="dot ${s.status === 'safe' ? 'green' : s.status === 'warning' ? 'yellow' : s.status === 'critical' ? 'red' : 'offline'}"></span>
             </div>
             <div class="s-stats">
                 <div class="s-row"><span>Water Level:</span><span class="val">${s.level} cm</span></div>
@@ -271,7 +225,7 @@ function renderTable(filter = '') {
     const tbody = document.getElementById('stationTableBody');
     const filtered = stations.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
     tbody.innerHTML = filtered.map(s => `
-        <tr onclick="openStationModal(${s.id})">
+        <tr onclick="openStationModal('${s.id}')">
             <td>${s.name}</td>
             <td>${s.level} cm</td>
             <td>${s.precip} mm/hr</td>
@@ -282,7 +236,7 @@ function renderTable(filter = '') {
     `).join('');
 }
 
-window.openStationModal = async function(id) {
+window.openStationModal = function(id) {
     const s = stations.find(st => st.id === id);
     document.getElementById('modalTitle').textContent = s.name;
     document.getElementById('modalBody').innerHTML = `
@@ -298,7 +252,7 @@ window.openStationModal = async function(id) {
     
     document.getElementById('stationModal').classList.add('active');
     
-    const { history } = await apiGetHistory(id);
+    const history = [0, 0, 0, 0, 0, 0, 0, 0];
     
     if (stationChart) stationChart.destroy();
     
@@ -311,8 +265,8 @@ window.openStationModal = async function(id) {
             datasets: [{
                 label: 'Water Level (cm)',
                 data: history,
-                borderColor: s.status === 'critical' ? '#EF4444' : s.status === 'warning' ? '#F59E0B' : '#22C55E',
-                backgroundColor: s.status === 'critical' ? 'rgba(239, 68, 68, 0.1)' : s.status === 'warning' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                borderColor: s.status === 'critical' ? '#EF4444' : s.status === 'warning' ? '#F59E0B' : s.status === 'offline' ? '#9CA3AF' : '#22C55E',
+                backgroundColor: s.status === 'critical' ? 'rgba(239, 68, 68, 0.1)' : s.status === 'warning' ? 'rgba(245, 158, 11, 0.1)' : s.status === 'offline' ? 'rgba(156, 163, 175, 0.1)' : 'rgba(34, 197, 94, 0.1)',
                 fill: true,
                 tension: 0.4,
                 pointRadius: 4,
@@ -340,16 +294,50 @@ function updateClock() {
     document.getElementById('currentTime').innerText = now.toLocaleTimeString('en-US', timeOptions).toLowerCase();
 }
 
-async function loadStations() {
-    try {
-        stations = await apiGetStations();
-        renderStations();
-        renderTable();
-        updateCounts();
-    } catch (err) {
-        console.warn('Backend not available:', err.message);
-        renderStations();
-        renderTable();
-        updateCounts();
+function loadStations() {
+    if (stationsUnsubscribe) {
+        stationsUnsubscribe();
     }
+
+    const stationsRef = ref(rtdb, '/');
+    stationsUnsubscribe = onValue(stationsRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            stations = Object.entries(data).map(([key, s]) => {
+                const level = s.Distance_cm ?? 0;
+                const rawRain = s.Rain_Value ?? 4095;
+                const precip = Math.round(((4095 - rawRain) / 4095) * 50);
+                const rate = 0;
+
+                const existingStation = stations.find(old => old.id === key);
+                const finalTimestamp = s.Last_Updated || (existingStation ? existingStation.timestamp : new Date().toISOString());
+
+                const now = new Date().getTime();
+                const lastUpdateMs = new Date(finalTimestamp).getTime();
+                const minutesSinceUpdate = (now - lastUpdateMs) / (1000 * 60);
+
+                let status = 'safe';
+                if (minutesSinceUpdate > 5) {
+                    status = 'offline';
+                } else if (level > 200 || precip > 30) {
+                    status = 'critical';
+                } else if (level > 100 || precip > 15) {
+                    status = 'warning';
+                }
+
+                return {
+                    id: key,
+                    name: key,
+                    level: level,
+                    precip: precip,
+                    rate: rate,
+                    status: status,
+                    timestamp: finalTimestamp
+                };
+            });
+            renderStations();
+            renderTable();
+            updateCounts();
+        }
+    });
 }
