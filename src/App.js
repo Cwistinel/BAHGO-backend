@@ -38,10 +38,6 @@ function App() {
                   <input type="password" id="loginPass" placeholder="Enter your password" />
                   <div id="passwordError" className="error-bubble" style={{ display: 'none' }} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-                  <input type="checkbox" id="rem" />
-                  <label htmlFor="rem" style={{ fontSize: '0.85rem', cursor: 'pointer' }}>Remember me</label>
-                </div>
                 <button type="button" id="loginBtn" className="btn-login">Log in</button>
               </div>
             </div>
@@ -142,8 +138,7 @@ function App() {
               </div>
               <div className="settings-section">
                 <h3>Notification Preferences</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}><input type="checkbox" id="crit" defaultChecked /><label htmlFor="crit" style={{ cursor: 'pointer' }}>Enable Critical Alerts</label></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}><input type="checkbox" id="warn" defaultChecked /><label htmlFor="warn" style={{ cursor: 'pointer' }}>Enable Warning Alerts</label></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}><input type="checkbox" id="crit" /><label htmlFor="crit" style={{ cursor: 'pointer' }}>Enable Critical Alerts</label></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}><input type="checkbox" id="email" /><label htmlFor="email" style={{ cursor: 'pointer' }}>Send Email Notifications</label></div>
                 <button className="btn-login" style={{ width: 'auto', padding: '12px 30px' }} id="saveNotif">Update Preferences</button>
               </div>

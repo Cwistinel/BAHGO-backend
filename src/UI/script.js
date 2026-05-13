@@ -1,6 +1,6 @@
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth, db, rtdb } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { ref, onValue } from 'firebase/database';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
@@ -28,15 +28,46 @@ async function apiRequest(path, options = {}) {
     return res.json();
 }
 
-async function apiUpdateNotificationSettings(prefs) {
-    return apiRequest('/users/me/notifications', {
-        method: 'PUT',
-        body: JSON.stringify(prefs)
-    });
-}
-
 let stations = [];
 let stationChart = null;
+
+function showToast(message, type = 'success') {
+    console.log("Toast Triggered:", message);
+
+    if (!document.getElementById('bahgo-toast-styles')) {
+        const style = document.createElement('style');
+        style.id = 'bahgo-toast-styles';
+        style.innerHTML = `
+            .toast-container { position: fixed; bottom: 30px; right: 30px; z-index: 9999; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
+            .custom-toast { background: #ffffff; color: #1f2937; padding: 16px 24px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); font-weight: 600; font-size: 0.95rem; border-left: 5px solid #3B82F6; transform: translateX(120%); opacity: 0; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+            .custom-toast.show { transform: translateX(0); opacity: 1; }
+            .custom-toast.success { border-left-color: #22C55E; }
+            .custom-toast.error { border-left-color: #EF4444; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `custom-toast ${type}`;
+    toast.textContent = message;
+    
+    container.appendChild(toast);
+
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+    }, 3500);
+}
 
 function showDashboard() {
     document.getElementById('loginScreen').classList.remove('active');
@@ -46,136 +77,183 @@ function showDashboard() {
 }
 
 function initBahgoApp() {
-    if (window.__bahgoInitialized) return;
-    window.__bahgoInitialized = true;
-    
-    document.getElementById('loginBtn').addEventListener('click', async function() {
-        const email = document.getElementById('loginEmail').value;
-        const password = document.getElementById('loginPass').value;
-        const loginBtn = document.getElementById('loginBtn');
-        const emailErrorDiv = document.getElementById('emailError');
-        const passwordErrorDiv = document.getElementById('passwordError');
-        
-        emailErrorDiv.style.display = 'none';
-        passwordErrorDiv.style.display = 'none';
-        
-        if (!email) {
-            emailErrorDiv.textContent = 'Please enter an email';
-            emailErrorDiv.style.display = 'block';
-            return;
-        }
-        
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            emailErrorDiv.textContent = 'Please enter a valid email address';
-            emailErrorDiv.style.display = 'block';
-            return;
-        }
-        
-        if (!password) {
-            passwordErrorDiv.textContent = 'Please enter a password';
-            passwordErrorDiv.style.display = 'block';
-            return;
-        }
-        
-        try {
-            loginBtn.disabled = true;
-            loginBtn.textContent = 'Signing in...';
-            await setPersistence(auth, browserSessionPersistence);
-            await signInWithEmailAndPassword(auth, email, password);
-        } catch (err) {
-            passwordErrorDiv.textContent = err.message || 'Login failed.';
-            passwordErrorDiv.style.display = 'block';
-        } finally {
-            loginBtn.disabled = false;
-            loginBtn.textContent = 'Log in';
-        }
-    });
 
-    document.getElementById('logoutBtn').addEventListener('click', async function() {
-        await signOut(auth);
-        if (stationsUnsubscribe) stationsUnsubscribe();
-        stationsUnsubscribe = null;
-    });
+    const loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) {
+        loginBtn.onclick = async function() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPass').value;
+            const emailErrorDiv = document.getElementById('emailError');
+            const passwordErrorDiv = document.getElementById('passwordError');
+            
+            emailErrorDiv.style.display = 'none';
+            passwordErrorDiv.style.display = 'none';
+            
+            if (!email) {
+                emailErrorDiv.textContent = 'Please enter an email';
+                emailErrorDiv.style.display = 'block';
+                return;
+            }
+            
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                emailErrorDiv.textContent = 'Please enter a valid email address';
+                emailErrorDiv.style.display = 'block';
+                return;
+            }
+            
+            if (!password) {
+                passwordErrorDiv.textContent = 'Please enter a password';
+                passwordErrorDiv.style.display = 'block';
+                return;
+            }
+            
+            try {
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Signing in...';
+                await setPersistence(auth, browserSessionPersistence);
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (err) {
+                passwordErrorDiv.textContent = err.message || 'Login failed.';
+                passwordErrorDiv.style.display = 'block';
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Log in';
+            }
+        };
+    }
+
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.onclick = async function() {
+            await signOut(auth);
+            if (stationsUnsubscribe) stationsUnsubscribe();
+            stationsUnsubscribe = null;
+        };
+    }
 
     document.querySelectorAll('.nav-btn[data-page]').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.onclick = function() {
             switchPage(this.dataset.page);
-        });
-    });
-
-    document.getElementById('closeModal').addEventListener('click', function() {
-        document.getElementById('stationModal').classList.remove('active');
-    });
-
-    document.getElementById('saveProfile').addEventListener('click', async function() {
-        const name = document.getElementById('settingsName').value;
-        const email = document.getElementById('settingsEmail').value;
-        try {
-            await setDoc(doc(db, 'users', 'admin'), {
-                name: name,
-                email: email,
-                role: 'Developer',
-                updatedAt: new Date().toISOString()
-            });
-            localStorage.setItem('bahgoUserName', name);
-            localStorage.setItem('bahgoUserEmail', email);
-            document.getElementById('userName').textContent = name;
-            alert('Profile saved!');
-        } catch (err) {
-            alert(`Could not save profile: ${err.message}`);
-        }
-    });
-
-    document.getElementById('saveNotif').addEventListener('click', async function() {
-        const prefs = {
-            crit: document.getElementById('crit').checked,
-            warn: document.getElementById('warn').checked,
-            email: document.getElementById('email').checked
         };
-        try {
-            await apiUpdateNotificationSettings(prefs);
-        } catch (err) {
-            console.warn('Notification endpoint unavailable or failed:', err);
-            alert(`Could not update backend notification settings: ${err.message}`);
-            return;
-        }
-        localStorage.setItem('bahgoNotif', JSON.stringify(prefs));
-        alert('Preferences updated!');
     });
 
-    document.getElementById('searchInput').addEventListener('input', function(e) {
-        renderTable(e.target.value);
-    });
-
-    if (localStorage.getItem('bahgoUserName')) {
-        document.getElementById('userName').textContent = localStorage.getItem('bahgoUserName');
-        document.getElementById('settingsName').value = localStorage.getItem('bahgoUserName');
-    }
-    if (localStorage.getItem('bahgoUserEmail')) {
-        document.getElementById('settingsEmail').value = localStorage.getItem('bahgoUserEmail');
-    }
-    if (localStorage.getItem('bahgoNotif')) {
-        const prefs = JSON.parse(localStorage.getItem('bahgoNotif'));
-        document.getElementById('crit').checked = prefs.crit;
-        document.getElementById('warn').checked = prefs.warn;
-        document.getElementById('email').checked = prefs.email;
+    const closeModalBtn = document.getElementById('closeModal');
+    if (closeModalBtn) {
+        closeModalBtn.onclick = function() {
+            document.getElementById('stationModal').classList.remove('active');
+        };
     }
 
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            showDashboard();
-        } else {
-            document.getElementById('dashboardScreen').classList.remove('active');
-            document.getElementById('loginScreen').classList.add('active');
+    const saveProfileBtn = document.getElementById('saveProfile');
+    if (saveProfileBtn) {
+        saveProfileBtn.onclick = async function() {
+            const name = document.getElementById('settingsName').value;
+            const email = document.getElementById('settingsEmail').value;
             
-            document.getElementById('loginEmail').value = '';
-            document.getElementById('loginPass').value = '';
-        }
-    });
+            const currentUser = auth.currentUser; 
 
-    updateClock();
-    setInterval(updateClock, 1000);
+            if (!currentUser) {
+                showToast("You must be logged in to save a profile!", 'error');
+                return;
+            }
+
+            try {
+                await setDoc(doc(db, 'users', currentUser.uid), {
+                    name: name,
+                    email: email,
+                    role: 'Developer',
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+                
+                document.getElementById('userName').textContent = name;
+                showToast('Profile saved!', 'success');
+            } catch (err) {
+                showToast('Could not save profile. Check your connection.', 'error');
+            }
+        };
+    }
+
+    const saveNotifBtn = document.getElementById('saveNotif');
+    if (saveNotifBtn) {
+        saveNotifBtn.onclick = async function() {
+            const prefs = {
+                crit: document.getElementById('crit').checked,
+                email: document.getElementById('email').checked
+            };
+            
+            const currentUser = auth.currentUser;
+            if (!currentUser) {
+                showToast("You must be logged in to save settings!", 'error');
+                return;
+            }
+
+            try {
+                await setDoc(doc(db, 'users', currentUser.uid), {
+                    notifications: prefs
+                }, { merge: true });
+                
+                showToast('Preferences synced to your account!', 'success');
+            } catch (err) {
+                console.warn('Firestore save failed:', err);
+                showToast('Could not update cloud settings.', 'error');
+            }
+        };
+    }
+
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.oninput = function(e) {
+            renderTable(e.target.value);
+        };
+    }
+
+    if (!window.__bahgoBackgroundTasksStarted) {
+        window.__bahgoBackgroundTasksStarted = true;
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                showDashboard();
+                
+                try {
+                    const userDocRef = doc(db, 'users', user.uid);
+                    const userDoc = await getDoc(userDocRef);
+                    
+                    if (userDoc.exists()) {
+                        const data = userDoc.data();
+                        document.getElementById('userName').textContent = data.name || user.email;
+                        document.getElementById('settingsName').value = data.name || '';
+                        document.getElementById('settingsEmail').value = data.email || user.email;
+                        
+                        if (data.notifications) {
+                            document.getElementById('crit').checked = data.notifications.crit || false;
+                            document.getElementById('email').checked = data.notifications.email || false;
+                        }
+                    } else {
+                        document.getElementById('userName').textContent = "Admin";
+                        document.getElementById('settingsName').value = "";
+                        document.getElementById('settingsEmail').value = user.email; 
+                        document.getElementById('crit').checked = false;
+                        document.getElementById('email').checked = false;
+                    }
+                } catch (error) {
+                    console.error("Error loading profile from database:", error);
+                }
+
+            } else {
+                document.getElementById('dashboardScreen').classList.remove('active');
+                document.getElementById('loginScreen').classList.add('active');
+                
+                const loginEmail = document.getElementById('loginEmail');
+                const loginPass = document.getElementById('loginPass');
+                if (loginEmail) loginEmail.value = '';
+                if (loginPass) loginPass.value = '';
+            }
+        });
+
+        updateClock();
+        setInterval(updateClock, 1000);
+    }
 }
 
 window.initBahgoApp = initBahgoApp;
@@ -193,15 +271,22 @@ function updateCounts() {
     
     const active = stations.length - offline;
 
-    document.getElementById('criticalCount').textContent = critical;
-    document.getElementById('warningCount').textContent = warning;
-    document.getElementById('normalCount').textContent = normal;
-    document.getElementById('activeCount').textContent = active;
-    document.getElementById('offlineCount').textContent = offline;
+    const criticalCount = document.getElementById('criticalCount');
+    const warningCount = document.getElementById('warningCount');
+    const normalCount = document.getElementById('normalCount');
+    const activeCount = document.getElementById('activeCount');
+    const offlineCount = document.getElementById('offlineCount');
+
+    if(criticalCount) criticalCount.textContent = critical;
+    if(warningCount) warningCount.textContent = warning;
+    if(normalCount) normalCount.textContent = normal;
+    if(activeCount) activeCount.textContent = active;
+    if(offlineCount) offlineCount.textContent = offline;
 }
 
 function renderStations() {
     const grid = document.getElementById('stationGrid');
+    if (!grid) return;
     grid.innerHTML = stations.map(s => `
         <div class="station-card" onclick="openStationModal('${s.id}')">
             <div class="s-header">
@@ -223,6 +308,7 @@ function renderStations() {
 
 function renderTable(filter = '') {
     const tbody = document.getElementById('stationTableBody');
+    if (!tbody) return;
     const filtered = stations.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
     tbody.innerHTML = filtered.map(s => `
         <tr onclick="openStationModal('${s.id}')">
@@ -256,7 +342,10 @@ window.openStationModal = function(id) {
     
     if (stationChart) stationChart.destroy();
     
-    const ctx = document.getElementById('stationChart').getContext('2d');
+    const canvas = document.getElementById('stationChart');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
     const hours = ['12am', '3am', '6am', '9am', '12pm', '3pm', '6pm', '9pm'];
     stationChart = new window.Chart(ctx, {
         type: 'line',
@@ -290,8 +379,11 @@ function updateClock() {
     const now = new Date();
     const dateOptions = { month: 'long', day: 'numeric', year: 'numeric' };
     const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-    document.getElementById('currentDate').innerText = now.toLocaleDateString('en-US', dateOptions);
-    document.getElementById('currentTime').innerText = now.toLocaleTimeString('en-US', timeOptions).toLowerCase();
+    const currentDateEl = document.getElementById('currentDate');
+    const currentTimeEl = document.getElementById('currentTime');
+    
+    if (currentDateEl) currentDateEl.innerText = now.toLocaleDateString('en-US', dateOptions);
+    if (currentTimeEl) currentTimeEl.innerText = now.toLocaleTimeString('en-US', timeOptions).toLowerCase();
 }
 
 function loadStations() {
@@ -320,7 +412,7 @@ function loadStations() {
                 if (minutesSinceUpdate > 5) {
                     status = 'offline';
                 } else if (level > 200 || precip > 30) {
-                    status = 'critical';
+                    status = 'critical';    
                 } else if (level > 100 || precip > 15) {
                     status = 'warning';
                 }

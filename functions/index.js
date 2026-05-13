@@ -5,17 +5,25 @@ admin.initializeApp();
 exports.checkOfflineDevices = onSchedule("every 1 minutes", async (event) => {
     const db = admin.database();
     const firestore = admin.firestore();
-    
-    const listUsersResult = await admin.auth().listUsers(1000);
-    const adminEmails = [];
-    
-    listUsersResult.users.forEach((userRecord) => {
-        if (userRecord.email && userRecord.providerData.length > 0) {
-            adminEmails.push(userRecord.email);
+
+    const usersSnapshot = await firestore.collection("users").get();
+    const offlineEmails = [];
+    const criticalEmails = [];
+
+    usersSnapshot.forEach((doc) => {
+        const userData = doc.data();
+        if (userData.email && userData.notifications) {
+            if (userData.notifications.email === true) {
+                offlineEmails.push(userData.email);
+                
+                if (userData.notifications.crit === true) {
+                    criticalEmails.push(userData.email);
+                }
+            }
         }
     });
 
-    if (adminEmails.length === 0) return null;
+    if (offlineEmails.length === 0 && criticalEmails.length === 0) return null;
 
     const snapshot = await db.ref("/").once("value");
     const stations = snapshot.val();
@@ -25,28 +33,71 @@ exports.checkOfflineDevices = onSchedule("every 1 minutes", async (event) => {
     const now = Date.now();
 
     for (const [key, data] of Object.entries(stations)) {
-        if (!data.Last_Updated) continue;
+        const level = data.Distance_cm ?? 0;
+        const rawRain = data.Rain_Value ?? 4095;
+        const precip = Math.round(((4095 - rawRain) / 4095) * 50);
+        
+        let status = 'safe';
+        
+        if (data.Last_Updated) {
+            const lastUpdateMs = new Date(data.Last_Updated).getTime();
+            const minutesSinceUpdate = (now - lastUpdateMs) / (1000 * 60);
+            if (minutesSinceUpdate > 5) {
+                status = 'offline';
+            }
+        }
 
-        const lastUpdateMs = new Date(data.Last_Updated).getTime();
-        const minutesSinceUpdate = (now - lastUpdateMs) / (1000 * 60);
+        if (status !== 'offline') {
+            if (level > 200 || precip > 30) {
+                status = 'critical';
+            } else if (level > 100 || precip > 15) {
+                status = 'warning';
+            }
+        }
 
-        if (minutesSinceUpdate > 5 && data.Email_Sent !== true) {
-            await firestore.collection("mail").add({
-                to: adminEmails,
-                message: {
-                  subject: `URGENT: ${key} is Offline!`,
-                  html: `
-                    <h2 style="color: #DC2626;">Device Offline Warning</h2>
-                    <p><strong>${key}</strong> has stopped reporting data to the Bahgo Dashboard.</p>
-                    <p>It has been offline for over 5 minutes. Please check the power supply and WiFi connection.</p>
-                    <p style="color: #64748B; font-size: 12px;">Last seen: ${new Date(data.Last_Updated).toLocaleString()}</p>
-                  `,
-                }
-            });
-            await db.ref(`/${key}/Email_Sent`).set(true);
-        } else if (minutesSinceUpdate <= 5 && data.Email_Sent === true) {
-            await db.ref(`/${key}/Email_Sent`).set(false);
+        const lastAlert = data.Last_Alert_Status || 'safe';
+
+        if (status !== lastAlert) {
+            let targetEmails = [];
+            let subject = "";
+            let htmlMessage = "";
+
+            if (status === 'offline' && offlineEmails.length > 0) {
+                targetEmails = offlineEmails;
+                subject = `URGENT: ${key} is Offline!`;
+                htmlMessage = `<h2 style="color: #9CA3AF;">Device Offline Warning</h2>
+                               <p><strong>${key}</strong> has stopped reporting data.</p>`;
+            } 
+            else if (status === 'critical' && criticalEmails.length > 0) {
+                targetEmails = criticalEmails;
+                subject = `CRITICAL ALERT: ${key} Water Levels High!`;
+                htmlMessage = `<h2 style="color: #DC2626;">Critical Flood Warning</h2>
+                               <p><strong>${key}</strong> has reached critical levels.</p>
+                               <p>Water Level: ${level} cm</p>
+                               <p>Precipitation: ${precip} mm/hr</p>`;
+            }
+            else if (status === 'warning' && criticalEmails.length > 0) {
+                targetEmails = criticalEmails;
+                subject = `WARNING: ${key} Water Levels Rising`;
+                htmlMessage = `<h2 style="color: #F59E0B;">Flood Warning</h2>
+                               <p><strong>${key}</strong> is showing elevated water levels.</p>
+                               <p>Water Level: ${level} cm</p>
+                               <p>Precipitation: ${precip} mm/hr</p>`;
+            }
+
+            if (targetEmails.length > 0 && htmlMessage !== "") {
+                await firestore.collection("mail").add({
+                    to: targetEmails,
+                    message: {
+                        subject: subject,
+                        html: htmlMessage
+                    }
+                });
+            }
+
+            await db.ref(`/${key}/Last_Alert_Status`).set(status);
         }
     }
+    
     return null;
 });
