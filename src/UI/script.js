@@ -1,39 +1,52 @@
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth, db, rtdb } from '../firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { ref, onValue } from 'firebase/database';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 let stationsUnsubscribe = null;
-
-async function apiRequest(path, options = {}) {
-    const headers = {
-        ...(options.headers || {})
-    };
-
-    if (auth.currentUser) {
-        const freshToken = await auth.currentUser.getIdToken();
-        headers.Authorization = `Bearer ${freshToken}`;
-    }
-
-    if (options.body && !headers['Content-Type']) {
-        headers['Content-Type'] = 'application/json';
-    }
-
-    const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Request failed (${res.status})`);
-    }
-    return res.json();
-}
 
 let stations = [];
 let stationChart = null;
 
-function showToast(message, type = 'success') {
-    console.log("Toast Triggered:", message);
+const ML_INTERCEPT = 0.4853274789608488;
+const ML_COEFS = [0.28838929176029493, 2.308913517624719, -1.4872272003480662, -0.07209977300363027, 0.19923314282525553, 0.007294433872660001, 0.5957491461495974, 0.0034158286180801718, 0.0, 0.0, -0.8160093786547183, 1.1515807293933271, -1.0982686162850888, -0.14217436522030538, -0.2142782521256309];
+const ML_SCALER_MEANS = [4.979546286132464, 0.9707281375777533, 12.08233321136725, 1.4164371469816792, 0.4941102112609621, 74.08003049152346, 3.8851274545676304, 0.15453104037077692, 0.0, 0.0, 105.02214062690574, 407.79307269179185, 0.943632381677064, 0.7479950752842007, 6.116260323429428];
+const ML_SCALER_SCALES = [7.020267037356046, 1.715463301117939, 78.96412771457267, 0.8126480027439398, 0.5318684592811325, 404.67016765278345, 27.061348879016073, 0.36145704853094546, 1.0, 1.0, 2496.7843126789944, 7216.529475774812, 1.465615474765435, 0.6412733464976822, 19.245374310411187];
 
+function calculateRiseRate(water_level, precipitation) {
+    const features = [
+        water_level,
+        precipitation,
+        water_level * precipitation,
+        Math.log1p(water_level),
+        Math.log1p(precipitation),
+        Math.pow(water_level, 2),
+        Math.pow(precipitation, 2),
+        precipitation === 0 ? 1 : 0,
+        water_level === 0 ? 1 : 0,
+        (precipitation === 0 && water_level === 0) ? 1 : 0,
+        water_level * Math.pow(precipitation, 2),
+        Math.pow(water_level, 2) * precipitation,
+        Math.log1p(water_level) * Math.log1p(precipitation),
+        Math.sqrt(precipitation),
+        water_level * Math.sqrt(precipitation)
+    ];
+
+    let prediction = ML_INTERCEPT;
+    for (let i = 0; i < features.length; i++) {
+        const scaledValue = (features[i] - ML_SCALER_MEANS[i]) / ML_SCALER_SCALES[i];
+        prediction += scaledValue * ML_COEFS[i];
+    }
+
+    if (prediction < 0) prediction = 0;
+
+    const DEMO_DAMPENER = 0.05;
+    prediction = prediction * DEMO_DAMPENER;
+
+    return Math.round(prediction * 100) / 100; 
+}
+
+function showToast(message, type = 'success') {
     if (!document.getElementById('bahgo-toast-styles')) {
         const style = document.createElement('style');
         style.id = 'bahgo-toast-styles';
@@ -77,7 +90,6 @@ function showDashboard() {
 }
 
 function initBahgoApp() {
-
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
         loginBtn.onclick = async function() {
@@ -236,9 +248,7 @@ function initBahgoApp() {
                         document.getElementById('crit').checked = false;
                         document.getElementById('email').checked = false;
                     }
-                } catch (error) {
-                    console.error("Error loading profile from database:", error);
-                }
+                } catch (error) {}
 
             } else {
                 document.getElementById('dashboardScreen').classList.remove('active');
@@ -322,53 +332,135 @@ function renderTable(filter = '') {
     `).join('');
 }
 
-window.openStationModal = function(id) {
+window.openStationModal = async function(id) {
     const s = stations.find(st => st.id === id);
     document.getElementById('modalTitle').textContent = s.name;
-    document.getElementById('modalBody').innerHTML = `
+    
+    let modalHtml = `
         <div class="s-stats">
             <div class="s-row"><span>Current Water Level:</span><span class="val">${s.level} cm</span></div>
             <div class="s-row"><span>Precipitation:</span><span class="val">${s.precip} mm/hr</span></div>
             <div class="s-row"><span>Rise Rate:</span><span class="val">${s.rate} cm/hr</span></div>
-            <div class="s-row"><span>Status:</span><span class="val">${s.status.toUpperCase()}</span></div>
+            <div class="s-row"><span>Current Status:</span><span class="val">${s.status.toUpperCase()}</span></div>
             <div class="s-row"><span>Last Updated:</span><span class="val">${new Date(s.timestamp).toLocaleString()}</span></div>
         </div>
-        <p style="margin-top: 20px; font-weight: 600; color: var(--text-muted);">24-Hour Water Level Trend</p>
+        <p style="margin-top: 20px; font-weight: 600; color: var(--text-muted);">1-Hour Predicted Trend</p>
     `;
-    
+
+    if (s.status === 'offline') {
+        modalHtml += `
+        <div style="text-align:center; padding: 30px; background: #f9fafb; border-radius: 8px; margin-top: 10px; border: 1px dashed #d1d5db;">
+            <p style="color: #6b7280; font-weight: 600; margin-bottom: 5px;">⚠️ Device Offline</p>
+            <p style="color: #9ca3af; font-size: 0.9rem;">Cannot predict future levels. Please reconnect the hardware sensor to view the live graph.</p>
+        </div>`;
+    }
+
+    document.getElementById('modalBody').innerHTML = modalHtml;
     document.getElementById('stationModal').classList.add('active');
-    
-    const history = [0, 0, 0, 0, 0, 0, 0, 0];
-    
-    if (stationChart) stationChart.destroy();
     
     const canvas = document.getElementById('stationChart');
     if (!canvas) return;
+
+    if (stationChart) stationChart.destroy();
     
+    if (s.status === 'offline') {
+        canvas.style.display = 'none';
+        return; 
+    }
+    
+    canvas.style.display = 'block';
     const ctx = canvas.getContext('2d');
-    const hours = ['12am', '3am', '6am', '9am', '12pm', '3pm', '6pm', '9pm'];
+
+    let historyLevels = [];
+    try {
+        const collectionMap = {
+            'sensordata1': 'sensor_readings1',
+            'sensordata2': 'sensor_readings2',
+            'sensordata3': 'sensor_readings3'
+        };
+        
+        const collectionName = collectionMap[id.toLowerCase()] || id;
+        const histRef = collection(db, collectionName);
+        const snap = await getDocs(histRef);
+        
+        let records = snap.docs.map(d => d.data());
+        records.sort((a, b) => new Date(a.timestamp || a.time || a.Last_Updated || 0) - new Date(b.timestamp || b.time || b.Last_Updated || 0));
+        
+        let recent = records.slice(-6).map(r => {
+            if (r.level !== undefined) return r.level;
+            if (r.Distance_cm !== undefined) {
+                let actualLevel = 7.62 - r.Distance_cm;
+                return actualLevel < 0 ? 0 : Math.round(actualLevel * 100) / 100;
+            }
+            return 0;
+        });
+        
+        while(recent.length < 6) {
+            recent.unshift(recent.length > 0 ? recent[0] : s.level);
+        }
+        historyLevels = recent;
+    } catch(e) {
+        historyLevels = [s.level, s.level, s.level, s.level, s.level, s.level];
+    }
+    
+    const realWorldPastRate = s.level - historyLevels[0]; 
+    let fusedRiseRate = (s.rate * 0.6) + (realWorldPastRate * 0.4); 
+    if (fusedRiseRate < 0) fusedRiseRate = 0; 
+    
+    const predictData = [s.level];
+    let projectedLevel = s.level;
+    for (let i = 10; i <= 60; i += 10) {
+        projectedLevel += (fusedRiseRate / 6); 
+        predictData.push(Math.round(projectedLevel * 100) / 100);
+    }
+
+    const labels = ['Now', '+10m', '+20m', '+30m', '+40m', '+50m', '+60m'];
+
+    const maxPredicted = predictData[6];
+    let predictLineColor = '#22C55E'; 
+    let predictBgColor = 'rgba(34, 197, 94, 0.1)';
+
+    if (maxPredicted >= 4.8) {
+        predictLineColor = '#EF4444'; 
+        predictBgColor = 'rgba(239, 68, 68, 0.1)';
+    } else if (maxPredicted >= 3.5) {
+        predictLineColor = '#F59E0B'; 
+        predictBgColor = 'rgba(245, 158, 11, 0.1)';
+    }
+
     stationChart = new window.Chart(ctx, {
         type: 'line',
         data: {
-            labels: hours,
-            datasets: [{
-                label: 'Water Level (cm)',
-                data: history,
-                borderColor: s.status === 'critical' ? '#EF4444' : s.status === 'warning' ? '#F59E0B' : s.status === 'offline' ? '#9CA3AF' : '#22C55E',
-                backgroundColor: s.status === 'critical' ? 'rgba(239, 68, 68, 0.1)' : s.status === 'warning' ? 'rgba(245, 158, 11, 0.1)' : s.status === 'offline' ? 'rgba(156, 163, 175, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                fill: true,
-                tension: 0.4,
-                pointRadius: 4,
-                pointBackgroundColor: '#fff',
-                borderWidth: 3
-            }]
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Predicted Level (cm)',
+                    data: predictData,
+                    borderColor: predictLineColor,
+                    backgroundColor: predictBgColor,
+                    borderDash: [5, 5], // Matching the dashed look from image_cb7a20.png
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 6, 
+                    // Matches the visual where 'Now' is a neutral dot and the rest follow prediction severity
+                    pointBackgroundColor: predictData.map((val, idx) => 
+                        idx === 0 ? '#9CA3AF' : (val >= 4.8 ? '#EF4444' : val >= 3.5 ? '#F59E0B' : '#22C55E')
+                    ), 
+                    pointBorderColor: '#fff',
+                    borderWidth: 3
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                y: { beginAtZero: true, grid: { color: '#f0f0f0' } },
+                y: { 
+                    beginAtZero: true, 
+                    max: 8, 
+                    grid: { color: '#f0f0f0' } 
+                },
                 x: { grid: { display: false } }
             }
         }
@@ -395,32 +487,50 @@ function loadStations() {
     stationsUnsubscribe = onValue(stationsRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
-            stations = Object.entries(data).map(([key, s]) => {
-                const level = s.Distance_cm ?? 0;
+            stations = Object.entries(data).filter(([key, s]) => key.toLowerCase().includes('sensor')).map(([key, s]) => {
+                const distanceCm = s.Distance_cm ?? 0;
                 const rawRain = s.Rain_Value ?? 4095;
-                const precip = Math.round(((4095 - rawRain) / 4095) * 50);
-                const rate = 0;
+                
+                const rainRatio = (4095 - rawRain) / 4095;
+                let precip = Math.pow(rainRatio, 2) * 15;
+                precip = Math.round(precip * 10) / 10;
+                
+                const SENSOR_MOUNT_HEIGHT_CM = 7.62;
+                let actualWaterLevelCm = SENSOR_MOUNT_HEIGHT_CM - distanceCm;
+                
+                if (actualWaterLevelCm < 0) actualWaterLevelCm = 0;
+
+                const rate = calculateRiseRate(actualWaterLevelCm, precip);
 
                 const existingStation = stations.find(old => old.id === key);
                 const finalTimestamp = s.Last_Updated || (existingStation ? existingStation.timestamp : new Date().toISOString());
 
                 const now = new Date().getTime();
                 const lastUpdateMs = new Date(finalTimestamp).getTime();
-                const minutesSinceUpdate = (now - lastUpdateMs) / (1000 * 60);
+                const secondsSinceUpdate = (now - lastUpdateMs) / 1000;
 
                 let status = 'safe';
-                if (minutesSinceUpdate > 5) {
+                if (secondsSinceUpdate > 5) {
                     status = 'offline';
-                } else if (level > 200 || precip > 30) {
+                } else if (actualWaterLevelCm >= 4.8 || precip >= 10) {
                     status = 'critical';    
-                } else if (level > 100 || precip > 15) {
+                } else if (actualWaterLevelCm >= 3.5 || precip >= 5) {
                     status = 'warning';
                 }
 
+                const customNames = {
+                    'sensordata1': 'Sealion Street',
+                    'sensordata2': 'Centurion Street',
+                    'sensordata3': 'Swingfire Street'
+                };
+                
+                const normalizedKey = key.toLowerCase();
+                const displayName = customNames[normalizedKey] || key;
+
                 return {
                     id: key,
-                    name: key,
-                    level: level,
+                    name: displayName,
+                    level: Math.round(actualWaterLevelCm * 100) / 100, 
                     precip: precip,
                     rate: rate,
                     status: status,
