@@ -1,5 +1,5 @@
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence } from 'firebase/auth';
-import { auth, db, rtdb } from '../firebase';
+import { auth, db, rtdb } from './firebase';
 import { doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { ref, onValue } from 'firebase/database';
 
