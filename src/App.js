@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import './App.css';
+import './UI/style.css';
 import './UI/script.js';
 
 function App() {
