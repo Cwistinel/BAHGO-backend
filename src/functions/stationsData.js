@@ -75,10 +75,11 @@ export function loadStations() {
                 let status = 'safe';
                 if (secondsSinceUpdate > 5) {
                     status = 'offline';
+    
                 } else if (actualWaterLevelCm >= 4.8 || precip >= 10) {
                     status = 'critical';
                 } else if (actualWaterLevelCm >= 3.5 || precip >= 5) {
-                    status = 'warning';
+                    status = 'warning'; 
                 }
 
                 const customNames = {
