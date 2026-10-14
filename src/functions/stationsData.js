@@ -3,7 +3,6 @@ import { rtdb } from '../firebase';
 import { state } from '../state';
 import { renderStations, renderTable, updateCounts } from './stationsRender';
 
-// Coefficients for the linear rise-rate model, trained offline and baked in here.
 const ML_INTERCEPT = 0.4853274789608488;
 const ML_COEFS = [0.28838929176029493, 2.308913517624719, -1.4872272003480662, -0.07209977300363027, 0.19923314282525553, 0.007294433872660001, 0.5957491461495974, 0.0034158286180801718, 0.0, 0.0, -0.8160093786547183, 1.1515807293933271, -1.0982686162850888, -0.14217436522030538, -0.2142782521256309];
 const ML_SCALER_MEANS = [4.979546286132464, 0.9707281375777533, 12.08233321136725, 1.4164371469816792, 0.4941102112609621, 74.08003049152346, 3.8851274545676304, 0.15453104037077692, 0.0, 0.0, 105.02214062690574, 407.79307269179185, 0.943632381677064, 0.7479950752842007, 6.116260323429428];
@@ -42,8 +41,6 @@ export function calculateRiseRate(water_level, precipitation) {
     return Math.round(prediction * 100) / 100;
 }
 
-// Subscribes to the live sensor feed, recomputes each station's derived
-// fields (water level, precipitation, rise rate, status), and re-renders.
 export function loadStations() {
     if (state.stationsUnsubscribe) {
         state.stationsUnsubscribe();
@@ -86,8 +83,9 @@ export function loadStations() {
 
                 const customNames = {
                     'sensordata1': 'Sealion Street',
-                    'sensordata2': 'Centurion Street',
-                    'sensordata3': 'Swingfire Street'
+                    'sensordata2': 'Samaritan Street',
+                    'sensordata3': 'Swingfire Street',
+                    'sensordata4': 'Striker Street'
                 };
 
                 const normalizedKey = key.toLowerCase();
