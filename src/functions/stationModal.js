@@ -46,7 +46,8 @@ export async function openStationModal(id) {
         const collectionMap = {
             'sensordata1': 'sensor_readings1',
             'sensordata2': 'sensor_readings2',
-            'sensordata3': 'sensor_readings3'
+            'sensordata3': 'sensor_readings3',
+            'sensordata4': 'sensor_readings4'
         };
 
         const collectionName = collectionMap[id.toLowerCase()] || id;

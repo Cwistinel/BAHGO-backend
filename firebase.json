@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "bahgo",
+    "site": "bahgo-ee71b",
     "public": "build",
     "ignore": [
       "firebase.json",
