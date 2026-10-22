@@ -4,6 +4,17 @@ import { state } from '../state';
 import { renderStations, renderTable, updateCounts } from './stationsRender';
 import { renderTaguigMaps } from './palarMap';
 
+// Thresholds match the Arduino code (sensor mounted 35 in / 88.9 cm above the ground)
+//   distance > 44.45 cm  -> green  (safe)
+//   distance <= 44.45 cm -> blue   (warning)  = 44.45 cm of water
+//   distance <= 5.08 cm  -> red    (critical) = 83.82 cm of water
+const SENSOR_MOUNT_HEIGHT_CM = 88.9;
+const WARN_LEVEL_CM = 44.45;
+const CRIT_LEVEL_CM = 83.82;
+// The rise-rate model below was trained on a small prototype scale (levels up to 7.62 cm),
+// so levels are scaled down before the model and the result is scaled back up.
+const ML_SCALE = 7.62 / SENSOR_MOUNT_HEIGHT_CM;
+
 // Coefficients for the linear rise-rate model, trained offline and baked in here.
 const ML_INTERCEPT = 0.4853274789608488;
 const ML_COEFS = [0.28838929176029493, 2.308913517624719, -1.4872272003480662, -0.07209977300363027, 0.19923314282525553, 0.007294433872660001, 0.5957491461495974, 0.0034158286180801718, 0.0, 0.0, -0.8160093786547183, 1.1515807293933271, -1.0982686162850888, -0.14217436522030538, -0.2142782521256309];
@@ -48,15 +59,14 @@ export function loadStations() {
         const data = snapshot.val();
         if (data) {
             const newStations = Object.entries(data).filter(([key, s]) => key.toLowerCase().includes('sensor')).map(([key, s]) => {
-                const distanceCm = s.Distance_cm ?? 0;
+                const distanceCm = s.Distance_cm ?? SENSOR_MOUNT_HEIGHT_CM;
                 const rawRain = s.Rain_Value ?? 4095;
                 const rainRatio = (4095 - rawRain) / 4095;
                 let precip = Math.pow(rainRatio, 2) * 15;
                 precip = Math.round(precip * 10) / 10;
-                const SENSOR_MOUNT_HEIGHT_CM = 7.62;
                 let actualWaterLevelCm = SENSOR_MOUNT_HEIGHT_CM - distanceCm;
                 if (actualWaterLevelCm < 0) actualWaterLevelCm = 0;
-                const rate = calculateRiseRate(actualWaterLevelCm, precip);
+                const rate = Math.round((calculateRiseRate(actualWaterLevelCm * ML_SCALE, precip) / ML_SCALE) * 100) / 100;
                 const existingStation = state.stations.find(old => old.id === key);
                 const finalTimestamp = s.Last_Updated || (existingStation ? existingStation.timestamp : new Date().toISOString());
                 const now = new Date().getTime();
@@ -65,9 +75,9 @@ export function loadStations() {
                 let status = 'safe';
                 if (secondsSinceUpdate > 5) {
                     status = 'offline';
-                } else if (actualWaterLevelCm >= 4.8 || precip >= 10) {
+                } else if (actualWaterLevelCm >= CRIT_LEVEL_CM || rawRain <= 1200) {
                     status = 'critical';
-                } else if (actualWaterLevelCm >= 3.5 || precip >= 5) {
+                } else if (actualWaterLevelCm >= WARN_LEVEL_CM || rawRain <= 2200) {
                     status = 'warning';
                 }
                 const baseNames = {

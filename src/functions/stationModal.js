@@ -68,7 +68,7 @@ export async function openStationModal(id) {
         let recent = records.slice(-6).map(r => {
             if (r.level !== undefined) return r.level;
             if (r.Distance_cm !== undefined) {
-                let actualLevel = 7.62 - r.Distance_cm;
+                let actualLevel = 88.9 - r.Distance_cm;
                 return actualLevel < 0 ? 0 : Math.round(actualLevel * 100) / 100;
             }
             return 0;
@@ -99,10 +99,10 @@ export async function openStationModal(id) {
     let predictLineColor = '#22C55E';
     let predictBgColor = 'rgba(34, 197, 94, 0.1)';
 
-    if (maxPredicted >= 4.8) {
+    if (maxPredicted >= 83.82) {
         predictLineColor = '#EF4444';
         predictBgColor = 'rgba(239, 68, 68, 0.1)';
-    } else if (maxPredicted >= 3.5) {
+    } else if (maxPredicted >= 44.45) {
         predictLineColor = '#F59E0B';
         predictBgColor = 'rgba(245, 158, 11, 0.1)';
     }
@@ -123,7 +123,7 @@ export async function openStationModal(id) {
                     pointRadius: 6,
                     // Matches the visual where 'Now' is a neutral dot and the rest follow prediction severity
                     pointBackgroundColor: predictData.map((val, idx) =>
-                        idx === 0 ? '#9CA3AF' : (val >= 4.8 ? '#EF4444' : val >= 3.5 ? '#F59E0B' : '#22C55E')
+                        idx === 0 ? '#9CA3AF' : (val >= 83.82 ? '#EF4444' : val >= 44.45 ? '#F59E0B' : '#22C55E')
                     ),
                     pointBorderColor: '#fff',
                     borderWidth: 3
@@ -137,7 +137,7 @@ export async function openStationModal(id) {
             scales: {
                 y: {
                     beginAtZero: true,
-                    max: 8,
+                    max: 100,
                     grid: { color: '#f0f0f0' }
                 },
                 x: { grid: { display: false } }
