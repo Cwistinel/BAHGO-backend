@@ -25,7 +25,7 @@ export async function loadAdminUsers() {
             if (u.lastLogin) lastLoginDisplay = new Date(u.lastLogin).toLocaleString();
             else if (u.createdAt) lastLoginDisplay = new Date(u.createdAt).toLocaleString() + ' (created)';
             if (isSuperTeam) {
-                rows += `<tr><td>${u.email}</td><td><span class="status-badge critical">Developer</span></td><td>${lastLoginDisplay}</td><td>Active</td><td><span style="color:#888">Protected</span></td></tr>`;
+                rows += `<tr><td>${u.email}</td><td><span class="status-badge critical">Super User</span></td><td>${lastLoginDisplay}</td><td>Active</td><td><span style="color:#888">Protected</span></td></tr>`;
             } else {
                 rows += `<tr><td>${u.email}</td><td><span class="status-badge safe">Admin</span></td><td>${lastLoginDisplay}</td><td>Active</td><td><button onclick="window.deleteAdminUser('${docSnap.id}', '${u.email}')" style="background:#EF4444;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer">Delete</button></td></tr>`;
             }

@@ -224,3 +224,12 @@ body { font-family: 'Poppins', sans-serif; background: #fff; overflow-x: hidden;
     .screen:not(#loginScreen), .dashboard-wrapper { height: 100dvh; }
   }
 }
+/*PROFILE PHOTO*/
+.avatar-upload { display: flex; align-items: center; gap: 18px; margin-bottom: 24px; }
+.avatar-large { width: 84px; height: 84px; flex-shrink: 0; }
+.avatar-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.photo-btn { padding: 10px 20px; background: var(--primary-gradient); color: #fff; border: none; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; font-family: 'Poppins', sans-serif; }
+.photo-btn:hover { box-shadow: 0 4px 14px rgba(0, 87, 255, 0.3); }
+.photo-btn:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+.photo-remove { background: none; border: none; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; font-family: 'Poppins', sans-serif; padding: 0; text-decoration: underline; }
+.photo-hint { font-size: 0.75rem; color: var(--text-muted); }

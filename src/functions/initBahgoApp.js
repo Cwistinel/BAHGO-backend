@@ -10,6 +10,7 @@ import { SUPER_USERS, loadAdminUsers, initSuperUsers } from './superUsers';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { signOut, updatePassword } from 'firebase/auth';
+import { initAvatar, applyAvatar } from './avatar';
 
 export function initBahgoApp() {
     window.deleteAdminUser = async (docId, email) => {
@@ -128,11 +129,10 @@ export function initBahgoApp() {
     if (saveProfileBtn) {
         saveProfileBtn.onclick = async function() {
             const name = document.getElementById('settingsName').value.trim();
-            const email = document.getElementById('settingsEmail').value.trim();
             const currentUser = auth.currentUser;
             if (!currentUser) { showToast("You must be logged in!", 'error'); return; }
             if (!name) { showToast("Display name cannot be empty!", 'error'); return; }
-            try { await saveUserProfile(currentUser.uid, { name, email }); document.getElementById('userName').textContent = name; showToast('Profile saved! Firestore updated.', 'success'); }
+            try { await saveUserProfile(currentUser.uid, { name, email: currentUser.email, role: 'Admin' }); document.getElementById('userName').textContent = name; showToast('Profile saved! Firestore updated.', 'success'); }
             catch (err) { showToast('Could not save: ' + err.message, 'error'); }
         };
     }
@@ -142,7 +142,8 @@ export function initBahgoApp() {
             const name = document.getElementById('superSettingsName')?.value.trim();
             const currentUser = auth.currentUser;
             if (!currentUser) { showToast("You must be logged in!", 'error'); return; }
-            try { await saveUserProfile(currentUser.uid, { name, email: currentUser.email }); const superNameEl = document.getElementById('superUserName'); if (superNameEl) superNameEl.textContent = name; document.getElementById('userName').textContent = name; showToast('Super Profile saved!', 'success'); }
+            if (!name) { showToast("Display name cannot be empty!", 'error'); return; }
+            try { await saveUserProfile(currentUser.uid, { name, email: currentUser.email, role: 'Super User' }); const superNameEl = document.getElementById('superUserName'); if (superNameEl) superNameEl.textContent = name; document.getElementById('userName').textContent = name; showToast('Super Profile saved!', 'success'); }
             catch (err) { showToast('Could not save: ' + err.message, 'error'); }
         };
     }
@@ -157,6 +158,8 @@ export function initBahgoApp() {
             catch (err) { showToast('Could not update: ' + err.message, 'error'); }
         };
     }
+
+    initAvatar();
 
     const searchInput = document.getElementById('searchInput');
     if (searchInput) { searchInput.oninput = function(e) { renderTable(e.target.value); }; }
@@ -213,13 +216,14 @@ export function initBahgoApp() {
                 }
                 try {
                     const data = await loadUserProfile(user.uid);
+                    applyAvatar(data ? data.photoURL : '');
                     if (data) {
                         document.getElementById('userName').textContent = data.name || user.email;
                         const superNameEl = document.getElementById('superUserName'); if (superNameEl) superNameEl.textContent = data.name || user.email;
                         const settingsName = document.getElementById('settingsName'); const settingsEmail = document.getElementById('settingsEmail');
-                        if (settingsName) settingsName.value = data.name || ''; if (settingsEmail) settingsEmail.value = data.email || user.email;
+                        if (settingsName) settingsName.value = data.name || ''; if (settingsEmail) settingsEmail.value = user.email;
                         const superSettingsName = document.getElementById('superSettingsName'); const superSettingsEmail = document.getElementById('superSettingsEmail');
-                        if (superSettingsName) superSettingsName.value = data.name || ''; if (superSettingsEmail) superSettingsEmail.value = data.email || user.email;
+                        if (superSettingsName) superSettingsName.value = data.name || ''; if (superSettingsEmail) superSettingsEmail.value = user.email;
                         if (data.notifications) {
                             const critEl = document.getElementById('crit'); const emailEl = document.getElementById('email');
                             if (critEl) critEl.checked = data.notifications.crit || false; if (emailEl) emailEl.checked = data.notifications.email || false;
@@ -231,6 +235,7 @@ export function initBahgoApp() {
                 document.getElementById('dashboardScreen')?.classList.remove('active');
                 document.getElementById('superUserScreen')?.classList.remove('active');
                 document.getElementById('loginScreen')?.classList.add('active');
+                applyAvatar('');
                 const loginEmail = document.getElementById('loginEmail'); const loginPass = document.getElementById('loginPass');
                 if (loginEmail) loginEmail.value = ''; if (loginPass) loginPass.value = '';
             }

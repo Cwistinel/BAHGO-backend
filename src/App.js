@@ -7,7 +7,6 @@ function App() {
     if (typeof window.initBahgoApp === 'function') {
       window.initBahgoApp();
     }
-    // Leaflet for map - does not change cwistinel colors
     if (!document.getElementById('leaflet-css')) {
       const link = document.createElement('link');
       link.id = 'leaflet-css';
@@ -87,7 +86,7 @@ function App() {
               <div className="avatar-circle"><img src="/logo192.png" alt="User" /></div>
               <div className="user-text">
                 <p style={{ fontWeight: 700, margin: 0 }} id="userName">Admin</p>
-                <p style={{ fontSize: '0.75rem', color: '#888', margin: 0 }}>developer</p>
+                <p style={{ fontSize: '0.75rem', color: '#888', margin: 0 }}>Admin</p>
               </div>
             </div>
             <nav className="side-nav">
@@ -175,9 +174,18 @@ function App() {
               <h2 style={{ marginBottom: '25px', fontWeight: 700 }}>Settings</h2>
               <div className="settings-section">
                 <h3>User Profile</h3>
+                <div className="avatar-upload">
+                  <div className="avatar-circle avatar-large"><img src="/logo192.png" alt="Profile" /></div>
+                  <div className="avatar-actions">
+                    <button type="button" className="photo-btn" id="changePhotoBtn">Change Photo</button>
+                    <button type="button" className="photo-remove" id="removePhotoBtn">Remove photo</button>
+                    <span className="photo-hint">JPG or PNG. It is cropped to a square.</span>
+                    <input type="file" id="photoInput" accept="image/*" style={{ display: 'none' }} />
+                  </div>
+                </div>
                 <div className="field"><label>Display Name</label><input type="text" id="settingsName" defaultValue="Admin" /></div>
-                <div className="field"><label>Email</label><input type="email" id="settingsEmail" defaultValue="admin@bahgo.com" /></div>
-                <div className="field"><label>Role</label><input type="text" defaultValue="Developer" disabled /></div>
+                <div className="field"><label>Email</label><input type="email" id="settingsEmail" defaultValue="admin@bahgo.com" disabled /></div>
+                <div className="field"><label>Role</label><input type="text" defaultValue="Admin" disabled /></div>
                 <button className="btn-login" style={{ width: 'auto', padding: '12px 30px' }} id="saveProfile">Save Profile</button>
               </div>
               {/*
@@ -200,7 +208,7 @@ function App() {
               <div className="avatar-circle"><img src="/logo192.png" alt="User" /></div>
               <div className="user-text">
                 <p style={{ fontWeight: 700, margin: 0 }} id="superUserName">Kayekaye</p>
-                <p style={{ fontSize: '0.75rem', color: '#888', margin: 0 }}>developer</p>
+                <p style={{ fontSize: '0.75rem', color: '#888', margin: 0 }}>Super User</p>
               </div>
             </div>
             <nav className="side-nav">
@@ -273,9 +281,18 @@ function App() {
               <h2 style={{ marginBottom: '25px', fontWeight: 700 }}>Settings</h2>
               <div className="settings-section">
                 <h3>User Profile</h3>
+                <div className="avatar-upload">
+                  <div className="avatar-circle avatar-large"><img src="/logo192.png" alt="Profile" /></div>
+                  <div className="avatar-actions">
+                    <button type="button" className="photo-btn" id="superChangePhotoBtn">Change Photo</button>
+                    <button type="button" className="photo-remove" id="superRemovePhotoBtn">Remove photo</button>
+                    <span className="photo-hint">JPG or PNG. It is cropped to a square.</span>
+                    <input type="file" id="superPhotoInput" accept="image/*" style={{ display: 'none' }} />
+                  </div>
+                </div>
                 <div className="field"><label>Display Name</label><input type="text" id="superSettingsName" defaultValue="Admin" /></div>
-                <div className="field"><label>Email</label><input type="email" id="superSettingsEmail" defaultValue="admin@bahgo.com" /></div>
-                <div className="field"><label>Role</label><input type="text" defaultValue="Developer" disabled /></div>
+                <div className="field"><label>Email</label><input type="email" id="superSettingsEmail" defaultValue="admin@bahgo.com" disabled /></div>
+                <div className="field"><label>Role</label><input type="text" defaultValue="Super User" disabled /></div>
                 <button className="btn-login" style={{ width: 'auto', padding: '12px 30px' }} id="saveSuperProfile">Save Profile</button>
               </div>
             </div>
