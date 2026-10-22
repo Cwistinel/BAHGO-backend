@@ -180,12 +180,14 @@ function App() {
                 <div className="field"><label>Role</label><input type="text" defaultValue="Developer" disabled /></div>
                 <button className="btn-login" style={{ width: 'auto', padding: '12px 30px' }} id="saveProfile">Save Profile</button>
               </div>
+              {/*
               <div className="settings-section">
                 <h3>Notification Preferences</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}><input type="checkbox" id="crit" /><label htmlFor="crit" style={{ cursor: 'pointer' }}>Enable Critical Alerts</label></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}><input type="checkbox" id="email" /><label htmlFor="email" style={{ cursor: 'pointer' }}>Send Email Notifications</label></div>
                 <button className="btn-login" style={{ width: 'auto', padding: '12px 30px' }} id="saveNotif">Update Preferences</button>
               </div>
+              */}
             </div>
           </main>
         </div>

@@ -147,3 +147,80 @@ body { font-family: 'Poppins', sans-serif; background: #fff; overflow-x: hidden;
 .map-icon-btn { animation: none; background: #EFF6FF; color: #2563EB; border: 1px solid #BFDBFE; box-shadow: none; font-size: 0.85rem; }
 .map-icon-btn::before { display: none; }
 .map-icon-btn:hover { background: #2563EB; color: #fff; transform: scale(1.08); box-shadow: 0 2px 8px rgba(37,99,235,0.3); }
+
+/*MOBILE / TABLET*/
+@media (max-width: 900px) {
+  .status-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .station-grid { grid-template-columns: 1fr; gap: 16px; }
+  .content-area { padding: 28px; }
+}
+
+@media (max-width: 768px) {
+  /* ---------- Login ---------- */
+  #loginScreen { height: auto; min-height: 100vh; }
+  .login-layout { flex-direction: column; }
+  .login-wave-side { flex: none; clip-path: none; border-radius: 0 0 36px 36px; padding: 32px 20px; }
+  .logo-large { width: 110px; }
+  .brand-title { font-size: 2.4rem; }
+  .brand-desc { font-size: 0.85rem; max-width: 300px; margin: 0 auto; }
+  .login-form-side { flex: none; padding: 24px 16px 40px; }
+  .login-box { width: 100%; max-width: 440px; padding: 32px 22px; }
+  .login-box h2 { font-size: 1.7rem; }
+  .sub { margin-bottom: 24px; }
+
+  .dashboard-wrapper { flex-direction: column; }
+  .sidebar { width: 100%; padding: 10px 14px; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; border-right: none; border-bottom: 1px solid var(--border-light); flex-shrink: 0; }
+  .user-profile { margin-bottom: 0; flex: 1; min-width: 0; }
+  .avatar-circle { width: 36px; height: 36px; }
+  .sidebar > div:last-child { display: flex; gap: 6px; margin-top: 0 !important; padding-bottom: 0 !important; }
+  .side-nav { order: 3; width: 100%; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+  .nav-btn { width: auto; margin-bottom: 0; padding: 9px 14px; font-size: 0.85rem; white-space: nowrap; flex-shrink: 0; }
+  .content-area { margin: 0; border-radius: 24px 24px 0 0; padding: 16px; min-height: 0; }
+
+  .dash-header { flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 20px; }
+  .dash-header h1 { font-size: 1.15rem !important; }
+  .dash-header p { font-size: 0.8rem !important; }
+  .dash-header-left img { width: 44px; height: 44px; }
+  .dash-header > div:last-child { text-align: left !important; }
+
+  .status-grid { gap: 10px; margin-bottom: 24px; }
+  .card { padding: 14px; }
+  .card-value { font-size: 1.4rem; }
+  .card-icon { width: 36px; height: 36px; }
+  .card.device-status { grid-column: 1 / -1; }
+  .station-card { padding: 20px; }
+  .s-header { padding-right: 64px; }
+
+  .data-table { padding: 12px; overflow-x: auto; }
+  .data-table table { min-width: 560px; }
+  .data-table th { padding: 10px; font-size: 0.75rem; }
+  .data-table td { padding: 12px 10px; font-size: 0.85rem; }
+  .search-bar input { width: 100%; }
+
+  .settings-section { padding: 20px; }
+  .settings-section div[style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+  #taguigMap, #superTaguigMap { height: 360px !important; }
+
+  
+  .modal-content { padding: 22px; width: 94%; max-height: 90vh; overflow-y: auto; border-radius: 20px; }
+  .palar-map-modal .modal-content { padding: 22px; overflow-y: auto; }
+  .modal-header { margin-bottom: 16px; }
+  .modal-header h2 { font-size: 1.2rem; }
+  .chart-container { height: 220px; }
+  .toast-container { bottom: 16px; right: 12px; left: 12px; }
+}
+
+@media (max-width: 480px) {
+  .brand-title { font-size: 2rem; }
+  .login-box h2 { font-size: 1.5rem; }
+  .card-label { font-size: 0.75rem; }
+  .card-value { font-size: 1.25rem; }
+  .card-icon { width: 30px; height: 30px; }
+  .station-card { padding: 16px; }
+}
+
+@supports (height: 100dvh) {
+  @media (max-width: 768px) {
+    .screen:not(#loginScreen), .dashboard-wrapper { height: 100dvh; }
+  }
+}
