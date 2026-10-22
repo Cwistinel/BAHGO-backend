@@ -2,7 +2,7 @@ import { ref, onValue } from 'firebase/database';
 import { rtdb } from '../firebase';
 import { state } from '../state';
 import { renderStations, renderTable, updateCounts } from './stationsRender';
-import { renderTaguigMaps } from './palarMap';
+import { renderTaguigMaps, stationLocations, listenToStationLocations } from './palarMap';
 
 // Thresholds match the Arduino code (sensor mounted 35 in / 88.9 cm above the ground)
 //   distance > 44.45 cm  -> green  (safe)
@@ -54,8 +54,9 @@ export function loadStations() {
     if (state.stationsUnsubscribe) {
         state.stationsUnsubscribe();
     }
+    const unsubscribeLocations = listenToStationLocations();
     const stationsRef = ref(rtdb, '/');
-    state.stationsUnsubscribe = onValue(stationsRef, (snapshot) => {
+    const unsubscribeStations = onValue(stationsRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
             const newStations = Object.entries(data).filter(([key, s]) => key.toLowerCase().includes('sensor')).map(([key, s]) => {
@@ -86,10 +87,7 @@ export function loadStations() {
                     'sensordata3': 'Swingfire Street',
                     'sensordata4': 'Striker Street'
                 };
-                const customNames = JSON.parse(localStorage.getItem('palar_custom_names') || '{}');
-                const mergedNames = { ...baseNames, ...customNames };
-                const normalizedKey = key.toLowerCase();
-                const displayName = mergedNames[normalizedKey] || mergedNames[key] || key;
+                const displayName = (stationLocations[key] && stationLocations[key].name) || baseNames[key.toLowerCase()] || key;
                 return {
                     id: key,
                     name: displayName,
@@ -107,6 +105,12 @@ export function loadStations() {
             renderTaguigMaps();
         }
     });
+    // one unsubscribe handle that stops both listeners (logout handlers already call it)
+    state.stationsUnsubscribe = () => {
+        unsubscribeStations();
+        unsubscribeLocations();
+    };
+    return state.stationsUnsubscribe;
 }
 
 export function startStationListener() {

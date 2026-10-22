@@ -1,4 +1,27 @@
 import { state } from '../state';
+import { doc, setDoc, collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
+
+// Shared (Firestore-backed) station locations: { sensordata1: {lat, lng, name, updatedAt}, ... }
+export const stationLocations = {};
+
+export function listenToStationLocations() {
+    return onSnapshot(collection(db, 'station_locations'), (snap) => {
+        snap.docChanges().forEach(change => {
+            if (change.type === 'removed') delete stationLocations[change.doc.id];
+            else stationLocations[change.doc.id] = change.doc.data();
+        });
+        state.stations.forEach(st => {
+            const loc = stationLocations[st.id];
+            if (loc && loc.name) st.name = loc.name;
+        });
+        import('./stationsRender').then(({ renderStations, renderTable }) => {
+            renderStations();
+            renderTable();
+        });
+        renderTaguigMaps();
+    }, (err) => console.warn('station_locations listener error:', err));
+}
 
 const BARANGAYS = ['Western Bicutan','Lower Bicutan','Upper Bicutan','Bagumbayan','Central Bicutan','Maharlika Village','Pinagsama','Tanyag','Ususan','Wawa','Bambang','Calzada','Hagonoy','Ibayo-Tipas','Ligid-Tipas','Napindan','Palingon','San Miguel','Santa Ana','Tuktukan','Palar'];
 
@@ -20,7 +43,7 @@ export function openPalarMapPopup(stationId) {
     const modalTitle = document.getElementById('modalTitle');
     const stationModal = document.getElementById('stationModal');
     const isSuperAdminDashboard = document.getElementById('superUserScreen')?.classList.contains('active');
-    const savedLoc = JSON.parse(localStorage.getItem(`palar_loc_${s.id}`) || 'null');
+    const savedLoc = stationLocations[s.id] || null;
     const lat = savedLoc ? savedLoc.lat : 14.5325;
     const lng = savedLoc ? savedLoc.lng : 121.0655;
     if (modalTitle) modalTitle.textContent = `${s.name} - Palar, Taguig`;
@@ -67,7 +90,7 @@ export function openPalarEditModal(stationId) {
     const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
     const stationModal = document.getElementById('stationModal');
-    const savedLoc = JSON.parse(localStorage.getItem(`palar_loc_${s.id}`) || 'null');
+    const savedLoc = stationLocations[s.id] || null;
     const lat = savedLoc ? savedLoc.lat : 14.5325;
     const lng = savedLoc ? savedLoc.lng : 121.0655;
     if (modalTitle) modalTitle.textContent = `Edit Location - ${s.id}`;
@@ -153,7 +176,7 @@ export function openPalarEditModal(stationId) {
     }, 100);
 }
 
-export function savePalarLocation(stationId) {
+export async function savePalarLocation(stationId) {
     const newName = document.getElementById('editStreetName')?.value.trim();
     const newLat = parseFloat(document.getElementById('editLat')?.value);
     const newLng = parseFloat(document.getElementById('editLng')?.value);
@@ -165,23 +188,20 @@ export function savePalarLocation(stationId) {
         alert('Please enter valid latitude/longitude!');
         return;
     }
-    const station = state.stations.find(s => s.id === stationId);
-    if (station) {
-        station.name = newName;
-        localStorage.setItem(`palar_loc_${stationId}`, JSON.stringify({ lat: newLat, lng: newLng, name: newName, updatedAt: new Date().toISOString() }));
-        const customNames = JSON.parse(localStorage.getItem('palar_custom_names') || '{}');
-        customNames[stationId] = newName;
-        customNames[stationId.toLowerCase()] = newName;
-        localStorage.setItem('palar_custom_names', JSON.stringify(customNames));
-        import('./stationsRender').then(({ renderStations, renderTable }) => {
-            renderStations();
-            renderTable();
-            renderTaguigMaps();
-        });
+    try {
+        // Saved to Firestore -> every logged-in super user/admin receives it live via onSnapshot
+        await setDoc(doc(db, 'station_locations', stationId), {
+            lat: newLat,
+            lng: newLng,
+            name: newName,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
         document.getElementById('stationModal').classList.remove('active');
         import('./notifications').then(({ showToast }) => {
-            showToast(`${stationId} renamed to ${newName} - Now visible to Admin!`, 'success');
+            showToast(`${stationId} updated - visible to all users`, 'success');
         });
+    } catch (err) {
+        alert('Could not save location: ' + err.message);
     }
 }
 
@@ -220,7 +240,7 @@ export function initTaguigMaps() {
             );
         }
     };
-    
+
     window.updateLeafletMarkers = (stations) => {
         [window.taguigMap, window.superTaguigMap].forEach(map => {
             if (!map) return;
@@ -231,7 +251,7 @@ export function initTaguigMaps() {
                 }
             });
             stations.forEach((s, idx) => {
-                const savedLoc = JSON.parse(localStorage.getItem(`palar_loc_${s.id}`) || 'null');
+                const savedLoc = stationLocations[s.id] || null;
                 let sLat, sLng, sName;
                 if (savedLoc) {
                     sLat = savedLoc.lat;
@@ -253,7 +273,7 @@ export function initTaguigMaps() {
             if (map.getContainer().getClientRects().length > 0) fitMapToLocations(map);
         });
     };
-    
+
     document.querySelectorAll('.nav-btn[data-page="mapView"]').forEach(btn => {
         btn.addEventListener('click', () => {
             setTimeout(() => {
@@ -274,7 +294,7 @@ export function initTaguigMaps() {
             }, 300);
         });
     });
-    
+
     if (state.stations.length > 0) {
         window.updateLeafletMarkers(state.stations);
     }
