@@ -26,7 +26,15 @@ export async function openStationModal(id) {
     }
 
     document.getElementById('modalBody').innerHTML = modalHtml;
-    document.getElementById('stationModal').classList.add('active');
+    const stationModal = document.getElementById('stationModal');
+    stationModal.classList.remove('palar-map-modal');
+    const modalContent = stationModal.querySelector('.modal-content');
+    modalContent.style.removeProperty('height');
+    modalContent.style.removeProperty('max-height');
+    modalContent.style.removeProperty('overflow-y');
+    const chartContainer = stationModal.querySelector('.chart-container');
+    if (chartContainer) chartContainer.style.removeProperty('display');
+    stationModal.classList.add('active');
 
     const canvas = document.getElementById('stationChart');
     if (!canvas) return;
@@ -109,11 +117,11 @@ export async function openStationModal(id) {
                     data: predictData,
                     borderColor: predictLineColor,
                     backgroundColor: predictBgColor,
-                    borderDash: [5, 5],
+                    borderDash: [5, 5], // Matching the dashed look from image_cb7a20.png
                     fill: true,
                     tension: 0.4,
                     pointRadius: 6,
-                    
+                    // Matches the visual where 'Now' is a neutral dot and the rest follow prediction severity
                     pointBackgroundColor: predictData.map((val, idx) =>
                         idx === 0 ? '#9CA3AF' : (val >= 4.8 ? '#EF4444' : val >= 3.5 ? '#F59E0B' : '#22C55E')
                     ),
