@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/Image/BahgoIcon.png" alt="Bahgo Logo" width="120" />
+  <img src="public/Image/NewBahgoIcon.png" alt="Bahgo Logo" width="120" />
 </p>
 
 # Bahgo - Flood Detection Monitoring System

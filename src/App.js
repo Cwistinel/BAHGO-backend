@@ -33,7 +33,7 @@ function App() {
           <div className="login-wave-side">
             <div className="brand-center">
               <p style={{ fontSize: '1.2rem', marginBottom: '18px' }}>Welcome to</p>
-              <img src="/Image/BahgoIcon.png" alt="Bahgo Logo" className="logo-large" />
+              <img src="/Image/NewBahgoIcon.png" alt="Bahgo Logo" className="logo-large" />
               <h1 className="brand-title">Bahgo</h1>
               <p className="brand-desc">
                 Flood Detection Monitoring System. Real-time Intelligence, Instant Response.
@@ -103,7 +103,7 @@ function App() {
           <main className="content-area">
             <header className="dash-header">
               <div className="dash-header-left">
-                <img src="/Image/BahgoIcon.png" alt="Logo" />
+                <img src="/Image/NewBahgoIcon.png" alt="Logo" />
                 <div>
                   <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Flood Detection System</h1>
                   <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>Monitoring Dashboard</p>
@@ -225,7 +225,7 @@ function App() {
           <main className="content-area">
             <header className="dash-header">
               <div className="dash-header-left">
-                <img src="/Image/BahgoIcon.png" alt="Logo" />
+                <img src="/Image/NewBahgoIcon.png" alt="Logo" />
                 <div>
                   <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Flood Detection System</h1>
                   <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>Monitoring Dashboard</p>
