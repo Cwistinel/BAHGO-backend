@@ -14,11 +14,6 @@ import { signOut, updatePassword } from 'firebase/auth';
 import { initAvatar, applyAvatar } from './avatar';
 
 export function initBahgoApp() {
-    window.deleteAdminUser = async (docId, email) => {
-        const mod = await import('./superUsers');
-        return mod.deleteAdminUser(docId, email);
-    };
-
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
         loginBtn.onclick = async function() {
@@ -110,10 +105,10 @@ export function initBahgoApp() {
         };
     }
 
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) { logoutBtn.onclick = async function() { await logout(); if (state.stationsUnsubscribe) state.stationsUnsubscribe(); state.stationsUnsubscribe = null; }; }
-    const superLogoutBtn = document.getElementById('superLogoutBtn');
-    if (superLogoutBtn) { superLogoutBtn.onclick = async function() { await logout(); if (state.stationsUnsubscribe) state.stationsUnsubscribe(); state.stationsUnsubscribe = null; }; }
+    ['logoutBtn', 'superLogoutBtn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.onclick = async () => { await logout(); state.stationsUnsubscribe?.(); state.stationsUnsubscribe = null; };
+    });
 
     document.querySelectorAll('.nav-btn[data-page]').forEach(btn => {
         btn.onclick = function() {
@@ -122,9 +117,6 @@ export function initBahgoApp() {
             else { switchPage(page); }
         };
     });
-
-    const closeModalBtn = document.getElementById('closeModal');
-    if (closeModalBtn) { closeModalBtn.onclick = function() { document.getElementById('stationModal').classList.remove('active'); }; }
 
     const saveProfileBtn = document.getElementById('saveProfile');
     if (saveProfileBtn) {

@@ -40,7 +40,7 @@ export function renderStations() {
             <div class="s-header">
                 <div>
                     <h3>${esc(s.name)}</h3>
-                    <p class="location-text" style="font-size: 0.75rem; color: #6B7280;">${getPalarBarangay(s.name, 0)}, Taguig</p>
+                    <p class="location-text" style="font-size: 0.75rem; color: #6B7280;">${getPalarBarangay(s.name)}, Taguig</p>
                     <p style="font-size: 0.75rem; color: #888;">${new Date(s.timestamp).toLocaleString()}</p>
                 </div>
             </div>

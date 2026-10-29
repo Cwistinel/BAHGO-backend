@@ -39,7 +39,6 @@ export async function deleteAdminUser(uid, email) {
 }
 
 export function initSuperUsers() {
-    window.deleteAdminUser = deleteAdminUser;
     const addAdminBtn = document.getElementById('addAdminBtn');
     if (!addAdminBtn) return;
     addAdminBtn.onclick = async function () {

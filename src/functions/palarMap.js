@@ -24,12 +24,7 @@ export function listenToStationLocations() {
     }, (err) => console.warn('station_locations listener error:', err));
 }
 
-const BARANGAYS = ['Western Bicutan','Lower Bicutan','Upper Bicutan','Bagumbayan','Central Bicutan','Maharlika Village','Pinagsama','Tanyag','Ususan','Wawa','Bambang','Calzada','Hagonoy','Ibayo-Tipas','Ligid-Tipas','Napindan','Palingon','San Miguel','Santa Ana','Tuktukan','Palar'];
-
-export function getPalarBarangay(name, idx) {
-    if (name.toLowerCase().includes('palar')) return 'Palar';
-    return BARANGAYS[idx % BARANGAYS.length];
-}
+export const getPalarBarangay = (name) => (name.toLowerCase().includes('palar') ? 'Palar' : 'Western Bicutan');
 
 // ================= MAPLIBRE + NOAH HAZARD HELPERS =================
 const NOAH_PMTILES_URL = 'pmtiles://https://huggingface.co/datasets/bettergovph/project-noah-hazard-maps/resolve/main/PMTiles/noah_hazard_maps.pmtiles';
@@ -365,37 +360,10 @@ export function initTaguigMaps() {
         });
     };
 
-    document.querySelectorAll('.nav-btn[data-page="mapView"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            setTimeout(() => {
-                if (window.taguigMap) {
-                    window.taguigMap.resize();
-                    fitMapToLocations(window.taguigMap);
-                }
-            }, 300);
-            setTimeout(() => {
-                if (window.taguigMap) {
-                    window.taguigMap.resize();
-                    fitMapToLocations(window.taguigMap);
-                }
-            }, 800);
-        });
-    });
-    document.querySelectorAll('.nav-btn[data-page="superMapView"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            setTimeout(() => {
-                if (window.superTaguigMap) {
-                    window.superTaguigMap.resize();
-                    fitMapToLocations(window.superTaguigMap);
-                }
-            }, 300);
-            setTimeout(() => {
-                if (window.superTaguigMap) {
-                    window.superTaguigMap.resize();
-                    fitMapToLocations(window.superTaguigMap);
-                }
-            }, 800);
-        });
+    [['mapView', 'taguigMap'], ['superMapView', 'superTaguigMap']].forEach(([page, key]) => {
+        document.querySelectorAll(`.nav-btn[data-page="${page}"]`).forEach(btn => btn.addEventListener('click', () => {
+            [300, 800].forEach(ms => setTimeout(() => { window[key]?.resize(); if (window[key]) fitMapToLocations(window[key]); }, ms));
+        }));
     });
 
     if (state.stations.length > 0) {
@@ -404,6 +372,3 @@ export function initTaguigMaps() {
 }
 
 window.initTaguigMaps = initTaguigMaps;
-window.savePalarLocation = savePalarLocation;
-window.openPalarEditModal = openPalarEditModal;
-window.openPalarMapPopup = openPalarMapPopup;

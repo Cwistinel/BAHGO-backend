@@ -298,7 +298,7 @@ function App() {
 
       <div className="modal" id="stationModal">
         <div className="modal-content">
-          <div className="modal-header"><h2 id="modalTitle">Station Details</h2><button className="modal-close" id="closeModal">&times;</button></div>
+          <div className="modal-header"><h2 id="modalTitle">Station Details</h2><button className="modal-close" data-action="close-modal">&times;</button></div>
           <div id="modalBody" />
           <div className="chart-container"><canvas id="stationChart" /></div>
         </div>

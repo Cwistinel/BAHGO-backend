@@ -112,7 +112,3 @@ const status = secondsSinceUpdate > 5 ? 'offline' : levelStatus;
     };
     return state.stationsUnsubscribe;
 }
-
-export function startStationListener() {
-    return loadStations();
-}
