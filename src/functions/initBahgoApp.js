@@ -171,7 +171,6 @@ export function initBahgoApp() {
         window.__bahgoBackgroundTasksStarted = true;
         watchAuthState(async (user) => {
             if (user) {
-                const userEmailLower = user.email ? user.email.toLowerCase() : '';
                 let isSuper = false;
             try {
             const tokenResult = await user.getIdTokenResult(true);
