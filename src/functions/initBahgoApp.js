@@ -180,18 +180,6 @@ export function initBahgoApp() {
             }
                
                 try {
-                    const blockedSnap = await getDoc(doc(db, 'blocked_users', user.uid));
-                    const blockedByEmailSnap = userEmailLower ? await getDoc(doc(db, 'blocked_users', userEmailLower)) : null;
-                    if (blockedSnap.exists() || (blockedByEmailSnap && blockedByEmailSnap.exists())) {
-                        await signOut(auth);
-                        document.getElementById('dashboardScreen')?.classList.remove('active');
-                        document.getElementById('superUserScreen')?.classList.remove('active');
-                        document.getElementById('loginScreen')?.classList.add('active');
-                        const passwordErrorDiv = document.getElementById('passwordError');
-                        if (passwordErrorDiv) { passwordErrorDiv.textContent = 'Account deleted and blocked. Contact super admin.'; passwordErrorDiv.style.display = 'block'; }
-                        showToast('This account has been deleted and blocked.', 'error');
-                        return;
-                    }
                     const userDocSnap = await getDoc(doc(db, 'users', user.uid));
                     if (!userDocSnap.exists()) {
                         await signOut(auth);
