@@ -11,6 +11,8 @@ import { renderTaguigMaps, stationLocations, listenToStationLocations } from './
 const SENSOR_MOUNT_HEIGHT_CM = 88.9;
 const WARN_LEVEL_CM = 44.45;
 const CRIT_LEVEL_CM = 83.82;
+// Match the backend: mark offline only after 3 missed 5-second sensor updates.
+const OFFLINE_AFTER_SEC = 150;
 // The rise-rate model below was trained on a small prototype scale (levels up to 7.62 cm),
 // so levels are scaled down before the model and the result is scaled back up.
 const ML_SCALE = 7.62 / SENSOR_MOUNT_HEIGHT_CM;
@@ -79,7 +81,7 @@ export function loadStations() {
                 } else if (actualWaterLevelCm >= WARN_LEVEL_CM || rawRain <= 2200) {
                 levelStatus = 'warning';
                 }
-const status = secondsSinceUpdate > 5 ? 'offline' : levelStatus;
+const status = secondsSinceUpdate > OFFLINE_AFTER_SEC ? 'offline' : levelStatus;
                 const baseNames = {
                     'sensordata1': 'Sealion Street',
                     'sensordata2': 'Samaritan Street',
