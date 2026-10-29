@@ -4,180 +4,134 @@
 
 # Bahgo — Flood Detection Monitoring System
 
-Bahgo is a real-time flood monitoring dashboard for Taguig City. ESP32 sensors
+Bahgo is an admin-only flood monitoring dashboard for Taguig City. ESP32 sensors
 post water-level and rain readings to Firebase Realtime Database every 5 seconds;
-the React dashboard shows them live, and a scheduled Cloud Function emails admins
-when a station floods, rises, or stops reporting.
+the dashboard shows them live, and a scheduled Cloud Function emails admins when a
+station floods, rises, or stops reporting.
 
-- Live demo: [bahgo.web.app](https://bahgo.web.app)
-- Admin-only: sign-ups are disabled; accounts are created by a super admin.
+Live demo: [bahgo.web.app](https://bahgo.web.app)
 
 ## Features
 
-- Real-time water level, precipitation, and rise-rate readings
-- Safe / Warning / Critical / Offline status per station
-- Email alerts for critical levels, warnings, offline stations, and recovery
-- 1-hour water-level trend prediction per station
-- Map with station markers and the Project NOAH flood-hazard layer
-- Super-admin user management with a forced password change on first login
-- Profile photo and notification preference storage
+- Live water level, precipitation, and rise rate
+- Safe / Warning / Critical / Offline status
+- Email alerts and a 1-hour trend chart per station
+- Map with station markers and the Project NOAH hazard layer
+- Super-admin user management with a forced first-login password change
 
 ## How it works
 
 ```text
-ESP32 (every 5 s)
-  └─> Realtime Database: Sensordata1..4
-        ├─> React dashboard (onValue) ─> status, cards, tables, map
-        └─> checkStations (Cloud Scheduler, every minute)
-              ├─> email via Gmail SMTP
-              └─> Firestore: alert_state/{stationId}
+ESP32 (5 s) -> RTDB Sensordata1..4 -> React dashboard
+                                  -> checkStations (1 min) -> email + alert_state
 ```
 
-Historical readings for the station chart come from Firestore
-`sensor_readings1..4`; that history is not written by this repo.
+The station chart reads Firestore `sensor_readings1..4`; that history is written
+outside this repo.
 
-## Tech stack
+## Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, Create React App 5 |
-| Auth | Firebase Authentication (Email/Password) |
-| Database | Firestore + Realtime Database |
-| Backend | Cloud Functions for Firebase (Node 24) |
-| Email | Nodemailer over Gmail SMTP |
-| Map | MapLibre GL + PMTiles (Project NOAH hazard tiles) |
-| Charts | Chart.js |
-| Hosting | Firebase Hosting |
+React 19 (Create React App 5), Firebase Auth / Firestore / Realtime Database /
+Hosting / Cloud Functions (Node 24), MapLibre GL + PMTiles, Chart.js, Nodemailer.
 
-## Project layout
+## Setup
 
-```text
-.
-├── functions/
-│   ├── index.js              createAdmin, removeAdmin, checkStations
-│   └── scripts/setRoles.js   seed super-admin claims
-├── public/                   static assets and index.html
-├── src/
-│   ├── App.js                dashboard markup/screens
-│   ├── firebase.js           Firebase SDK setup
-│   └── functions/            auth, data, map, and UI helpers
-├── firebase.json
-├── firestore.rules
-└── .env                      local web config (gitignored)
-```
+Prerequisites: Node 24, the Firebase CLI, a Firebase project on the Blaze plan,
+and a Gmail account with an App Password.
 
-## Prerequisites
+1. Install dependencies:
 
-- Node.js 24 and npm 10+
-- Firebase CLI (`npm install -g firebase-tools`)
-- A Firebase project with Authentication, Firestore, Realtime Database,
-  Hosting, and Cloud Functions enabled
-- The Blaze plan, because the scheduled function uses Cloud Scheduler and
-  sends email
-- A Gmail account with an App Password for SMTP
+   ```sh
+   npm install
+   npm --prefix functions install
+   ```
 
-## Configuration
+2. Create `.env` in the project root (it is gitignored):
 
-Create `.env` in the project root (it is gitignored):
+   ```dotenv
+   REACT_APP_FIREBASE_API_KEY=
+   REACT_APP_FIREBASE_AUTH_DOMAIN=
+   REACT_APP_FIREBASE_PROJECT_ID=
+   REACT_APP_FIREBASE_STORAGE_BUCKET=
+   REACT_APP_FIREBASE_MESSAGING_SENDER_ID=
+   REACT_APP_FIREBASE_APP_ID=
+   REACT_APP_FIREBASE_MEASUREMENT_ID=
+   REACT_APP_FIREBASE_DATABASE_URL=
+   ```
 
-```dotenv
-REACT_APP_FIREBASE_API_KEY=
-REACT_APP_FIREBASE_AUTH_DOMAIN=
-REACT_APP_FIREBASE_PROJECT_ID=
-REACT_APP_FIREBASE_STORAGE_BUCKET=
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=
-REACT_APP_FIREBASE_APP_ID=
-REACT_APP_FIREBASE_MEASUREMENT_ID=
-REACT_APP_FIREBASE_DATABASE_URL=
-```
-
-These are public Firebase web-config values; access is enforced by security rules.
-
-Set the function secrets (do not put them in `.env`):
-
-```sh
-firebase functions:secrets:set SMTP_USER
-firebase functions:secrets:set SMTP_PASS
-```
-
-`SMTP_PASS` should be a Gmail App Password. The functions deploy to
-`us-central1`.
-
-## Local development
-
-```sh
-npm install
-npm start
-```
-
-The dashboard runs at <http://localhost:3000> and connects to the Firebase
-project in `.env`. Emulators are not configured.
-
-To run the functions locally:
-
-```sh
-cd functions
-npm install
-npm run serve
-```
-
-## First-time Firebase setup
-
-1. Log in and select the project:
+3. Select the project and enable services:
 
    ```sh
    firebase login
    firebase use <your-project-id>
    ```
 
-   The hosting site is currently fixed to `bahgo` in `firebase.json`; change it
-   for your own project.
+   In the Firebase console, enable Email/Password auth and disable sign-ups
+   (Authentication → Settings → User actions), then create Firestore and a
+   Realtime Database.
 
-2. Enable Email/Password auth, Firestore, Realtime Database, and Hosting in the
-   Firebase console.
-
-3. Deploy the Firestore rules:
+4. Deploy the Firestore rules:
 
    ```sh
    firebase deploy --only firestore:rules
    ```
 
-4. Set the SMTP secrets shown above.
+5. Set the function secrets:
 
-5. Seed the first super admin:
-   - Create the account in Firebase Authentication.
-   - Create `users/{uid}` in Firestore with `email`, `name`,
-     `role: "Super User"`, and `isFirstLogin: false`.
-   - Add the email to the `SUPER` list in `functions/scripts/setRoles.js`.
-   - Run the script with application-default credentials:
+   ```sh
+   firebase functions:secrets:set SMTP_USER
+   firebase functions:secrets:set SMTP_PASS
+   ```
+
+   `SMTP_PASS` is a Gmail App Password. Functions run in `us-central1`.
+
+6. Seed the first super admin:
+
+   - Create the account in Authentication.
+   - In the Firebase console or with the Admin SDK, create `users/{uid}` with
+     `email`, `name`, `role: "Super User"`, and `isFirstLogin: false`.
+     Client creates are blocked by `firestore.rules`.
+   - Add the email to `SUPER` in `functions/scripts/setRoles.js`, then run:
 
      ```sh
      GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json \
        node functions/scripts/setRoles.js
      ```
 
-   The script sets the `role: "super"` custom claim. The app signs out any
-   account that has no `users/{uid}` document.
+     The script sets `super` for the listed emails and `admin` for every other
+     Auth user.
 
-6. Build and deploy:
+7. Build and deploy:
 
    ```sh
    npm run build
    firebase deploy
    ```
 
-7. Create admin accounts from **User Management** in the super-admin dashboard.
-   They receive a temporary password and must change it on first login.
+8. Create admins from **User Management** in the super dashboard. The app does
+   not email the temporary password; share it with them. They must change it on
+   first login.
+
+The hosting site is fixed to `bahgo` in `firebase.json`; change it for your own
+project.
+
+## Realtime Database rules
+
+This repo does not deploy RTDB rules. The dashboard reads the database root as a
+signed-in user, so authenticated users need read at the root; devices need write
+to `Sensordata1..4`. Root read exposes every root key, so keep unrelated data out
+of this database.
 
 ## Roles
 
-| Custom claim | Firestore `role` | Access |
+| Custom claim | `users.role` | Access |
 |---|---|---|
 | `super` | `Super User` | Full dashboard, manage admins, edit station locations |
 | `admin` | `Admin` | Read-only dashboard |
 
-The custom claim is what Firestore rules check. The `role` field in the user
-document is for display.
+Firestore rules check the custom claim. The `users.role` field is also used to
+choose alert-email recipients, so keep it in sync. An account with no
+`users/{uid}` document is signed out.
 
 ## Alerts and thresholds
 
@@ -191,9 +145,8 @@ document is for display.
 | Warning/offline cooldown | 30 minutes |
 | Critical alerts | sent immediately, no cooldown |
 
-Emails go to every Firestore user whose role is `Admin` or `Super User`.
-Warning and offline emails are throttled; critical alerts are not. A
-back-online email is sent when a station recovers.
+Emails go to every user whose `users.role` is `Admin` or `Super User`. A recovery
+email is sent when a station comes back online.
 
 ## Data model
 
@@ -209,12 +162,15 @@ back-online email is sent when a station recovers.
 | `Sensordata1..4` | Current reading from each device |
 | `RecordedData/SensordataN` | Historical readings (not used by the dashboard) |
 
-Realtime Database rules are not managed by this repo; configure them in the
-Firebase console. The dashboard reads the database root as a signed-in user.
+## Local development and checks
 
-## Checks
+```sh
+npm start                      # dashboard at http://localhost:3000
+npm --prefix functions run serve
+```
 
-There is no automated test suite. Before shipping:
+The frontend always uses the project in `.env`; emulators are not wired. There is
+no automated test suite. Before shipping:
 
 ```sh
 npx eslint src
@@ -222,24 +178,23 @@ CI=true npm run build
 node --check functions/index.js
 ```
 
-## Deployment
+## Known limits
 
-```sh
-npm run build
-firebase deploy
-```
-
-`firebase deploy` publishes Hosting, Firestore rules, and Cloud Functions.
-Realtime Database rules and Gmail secrets are configured separately. Use
-`firebase functions:log` to inspect scheduled runs and email failures.
+- The dashboard reads the RTDB root, so each admin browser downloads
+  `RecordedData` history on load. Fine for four stations; if it grows, read only
+  `Sensordata1..4` in `src/functions/stationsData.js`.
+- The chart fetches each `sensor_readingsN` collection and keeps the last six.
+  Add a query limit if history grows.
+- The `notifications` checkboxes are stored on the profile but are not used to
+  filter alert recipients yet.
 
 ## Troubleshooting
 
-- **Station shows offline:** its `Last_Updated` is older than 150 seconds.
+- **Station shows offline:** `Last_Updated` is older than 150 seconds.
 - **No alert emails:** check the `SMTP_USER`/`SMTP_PASS` secrets and
   `firebase functions:log`.
 - **Login returns to the login screen:** the account has no `users/{uid}`
-  Firestore document.
+  document.
 - **Map is blank:** MapLibre, PMTiles, and the NOAH tiles load from public CDNs;
   check network access.
 
