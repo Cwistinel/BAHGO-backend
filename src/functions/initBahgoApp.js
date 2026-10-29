@@ -2,7 +2,7 @@ import './actions';
 import { auth } from '../firebase';
 import { state } from '../state';
 import { login, logout, watchAuthState } from './auth';
-import { loadUserProfile, saveUserProfile, saveNotificationPrefs } from './settings';
+import { loadUserProfile, saveUserProfile } from './settings';
 import { showToast } from './notifications';
 import { updateClock } from './clock';
 import { switchPage, switchSuperPage, showDashboard, showSuperDashboard } from './navigation';
@@ -141,17 +141,6 @@ export function initBahgoApp() {
         };
     }
 
-    const saveNotifBtn = document.getElementById('saveNotif');
-    if (saveNotifBtn) {
-        saveNotifBtn.onclick = async function() {
-            const prefs = { crit: document.getElementById('crit')?.checked, email: document.getElementById('email')?.checked };
-            const currentUser = auth.currentUser;
-            if (!currentUser) { showToast("You must be logged in!", 'error'); return; }
-            try { await saveNotificationPrefs(currentUser.uid, prefs); showToast('Preferences synced!', 'success'); }
-            catch (err) { showToast('Could not update: ' + err.message, 'error'); }
-        };
-    }
-
     initAvatar();
 
     const searchInput = document.getElementById('searchInput');
@@ -209,10 +198,6 @@ export function initBahgoApp() {
                         if (settingsName) settingsName.value = data.name || ''; if (settingsEmail) settingsEmail.value = user.email;
                         const superSettingsName = document.getElementById('superSettingsName'); const superSettingsEmail = document.getElementById('superSettingsEmail');
                         if (superSettingsName) superSettingsName.value = data.name || ''; if (superSettingsEmail) superSettingsEmail.value = user.email;
-                        if (data.notifications) {
-                            const critEl = document.getElementById('crit'); const emailEl = document.getElementById('email');
-                            if (critEl) critEl.checked = data.notifications.crit || false; if (emailEl) emailEl.checked = data.notifications.email || false;
-                        }
                     }
                     if (isSuper) { showSuperDashboard(); initSuperUsers(); loadAdminUsers(); } else { showDashboard(); }
                 } catch (error) { if (isSuper) { showSuperDashboard(); initSuperUsers(); loadAdminUsers(); } else { showDashboard(); } }

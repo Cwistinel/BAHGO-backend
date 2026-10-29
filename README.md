@@ -152,7 +152,7 @@ email is sent when a station comes back online.
 
 | Firestore path | Purpose |
 |---|---|
-| `users/{uid}` | Profile, role, notification prefs, first-login flag |
+| `users/{uid}` | Profile, role, first-login flag |
 | `station_locations/{stationId}` | Latitude, longitude, and display name |
 | `sensor_readings1..4` | Historical readings for the chart |
 | `alert_state/{stationId}` | Last alert state (written by the function only) |
@@ -185,8 +185,6 @@ node --check functions/index.js
   `Sensordata1..4` in `src/functions/stationsData.js`.
 - The chart fetches each `sensor_readingsN` collection and keeps the last six.
   Add a query limit if history grows.
-- The `notifications` checkboxes are stored on the profile but are not used to
-  filter alert recipients yet.
 
 ## Troubleshooting
 
