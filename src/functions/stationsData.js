@@ -73,14 +73,13 @@ export function loadStations() {
                 const now = new Date().getTime();
                 const lastUpdateMs = new Date(finalTimestamp).getTime();
                 const secondsSinceUpdate = (now - lastUpdateMs) / 1000;
-                let status = 'safe';
-                if (secondsSinceUpdate > 5) {
-                    status = 'offline';
-                } else if (actualWaterLevelCm >= CRIT_LEVEL_CM || rawRain <= 1200) {
-                    status = 'critical';
+                let levelStatus = 'safe';
+                if (actualWaterLevelCm >= CRIT_LEVEL_CM || rawRain <= 1200) {
+                levelStatus = 'critical';
                 } else if (actualWaterLevelCm >= WARN_LEVEL_CM || rawRain <= 2200) {
-                    status = 'warning';
+                levelStatus = 'warning';
                 }
+const status = secondsSinceUpdate > 5 ? 'offline' : levelStatus;
                 const baseNames = {
                     'sensordata1': 'Sealion Street',
                     'sensordata2': 'Samaritan Street',
@@ -95,6 +94,7 @@ export function loadStations() {
                     precip: precip,
                     rate: rate,
                     status: status,
+                    lastKnownStatus: levelStatus,
                     timestamp: finalTimestamp
                 };
             });

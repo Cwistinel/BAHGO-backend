@@ -1,3 +1,4 @@
+import './actions';
 import { auth } from '../firebase';
 import { state } from '../state';
 import { login, logout, watchAuthState } from './auth';
@@ -6,7 +7,7 @@ import { showToast } from './notifications';
 import { updateClock } from './clock';
 import { switchPage, switchSuperPage, showDashboard, showSuperDashboard } from './navigation';
 import { renderTable } from './stationsRender';
-import { SUPER_USERS, loadAdminUsers, initSuperUsers } from './superUsers';
+import { loadAdminUsers, initSuperUsers } from './superUsers';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { signOut, updatePassword } from 'firebase/auth';
@@ -132,7 +133,7 @@ export function initBahgoApp() {
             const currentUser = auth.currentUser;
             if (!currentUser) { showToast("You must be logged in!", 'error'); return; }
             if (!name) { showToast("Display name cannot be empty!", 'error'); return; }
-            try { await saveUserProfile(currentUser.uid, { name, email: currentUser.email, role: 'Admin' }); document.getElementById('userName').textContent = name; showToast('Profile saved! Firestore updated.', 'success'); }
+            try { await saveUserProfile(currentUser.uid, { name }); document.getElementById('userName').textContent = name; showToast('Profile saved! Firestore updated.', 'success'); }
             catch (err) { showToast('Could not save: ' + err.message, 'error'); }
         };
     }
@@ -143,7 +144,7 @@ export function initBahgoApp() {
             const currentUser = auth.currentUser;
             if (!currentUser) { showToast("You must be logged in!", 'error'); return; }
             if (!name) { showToast("Display name cannot be empty!", 'error'); return; }
-            try { await saveUserProfile(currentUser.uid, { name, email: currentUser.email, role: 'Super User' }); const superNameEl = document.getElementById('superUserName'); if (superNameEl) superNameEl.textContent = name; document.getElementById('userName').textContent = name; showToast('Super Profile saved!', 'success'); }
+            try { await saveUserProfile(currentUser.uid, { name }); const superNameEl = document.getElementById('superUserName'); if (superNameEl) superNameEl.textContent = name; document.getElementById('userName').textContent = name; showToast('Super Profile saved!', 'success'); }
             catch (err) { showToast('Could not save: ' + err.message, 'error'); }
         };
     }
@@ -171,8 +172,13 @@ export function initBahgoApp() {
         watchAuthState(async (user) => {
             if (user) {
                 const userEmailLower = user.email ? user.email.toLowerCase() : '';
-                const isSuper = SUPER_USERS.map(e => e.toLowerCase()).includes(userEmailLower);
-
+                let isSuper = false;
+            try {
+            const tokenResult = await user.getIdTokenResult(true);
+            isSuper = tokenResult.claims.role === 'super';
+            } catch (e) {
+            isSuper = false;
+            }
                
                 try {
                     const blockedSnap = await getDoc(doc(db, 'blocked_users', user.uid));

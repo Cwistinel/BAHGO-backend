@@ -6,14 +6,11 @@ export async function loadUserProfile(uid) {
     return snap.exists() ? snap.data() : null;
 }
 
-export async function saveUserProfile(uid, { name, email, role }) {
-    const data = {
+export async function saveUserProfile(uid, { name }) {
+    await setDoc(doc(db, 'users', uid), {
         name,
-        email,
         updatedAt: new Date().toISOString()
-    };
-    if (role) data.role = role;
-    await setDoc(doc(db, 'users', uid), data, { merge: true });
+    }, { merge: true });
 }
 
 export async function saveUserPhoto(uid, photoData) {

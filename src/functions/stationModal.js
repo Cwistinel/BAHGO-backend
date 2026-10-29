@@ -12,6 +12,7 @@ export async function openStationModal(id) {
             <div class="s-row"><span>Precipitation:</span><span class="val">${s.precip} mm/hr</span></div>
             <div class="s-row"><span>Rise Rate:</span><span class="val">${s.rate} cm/hr</span></div>
             <div class="s-row"><span>Current Status:</span><span class="val">${s.status.toUpperCase()}</span></div>
+            ${s.status === 'offline' ? `<div class="s-row"><span>Last Known Status:</span><span class="val">${(s.lastKnownStatus || 'safe').toUpperCase()}</span></div>` : ''}
             <div class="s-row"><span>Last Updated:</span><span class="val">${new Date(s.timestamp).toLocaleString()}</span></div>
         </div>
         <p style="margin-top: 20px; font-weight: 600; color: var(--text-muted);">1-Hour Predicted Trend</p>

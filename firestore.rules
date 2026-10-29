@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isSuper() {
+      return signedIn() && request.auth.token.role == 'super';
+    }
+    function isStaff() {
+      return signedIn()
+        && request.auth.token.role in ['admin', 'super']
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    match /users/{uid} {
+      allow read: if isSuper() || (signedIn() && request.auth.uid == uid);
+      allow create, delete: if false;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['name', 'photoURL', 'notifications', 'lastLogin',
+                     'updatedAt', 'isFirstLogin', 'passwordUpdatedAt']);
+    }
+
+    match /station_locations/{id} {
+      allow read: if isStaff();
+      allow write: if isSuper();
+    }
+
+    match /{collection}/{docId} {
+      allow read: if collection.matches('sensor_readings[0-9]+') && isStaff();
+      // Only if your devices write history straight to Firestore without logging in,
+      // remove the two slashes at the start of the next line:
+      // allow create: if collection.matches('sensor_readings[0-9]+');
+    }
+  }
+}

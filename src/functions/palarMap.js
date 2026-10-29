@@ -1,4 +1,5 @@
 import { state } from '../state';
+import { esc } from './escape';
 import { doc, setDoc, collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -56,8 +57,8 @@ export function openPalarMapPopup(stationId) {
                 <div class="s-row"><span>Status:</span><span class="val">${s.status.toUpperCase()}</span></div>
             </div>
             <div id="palarPopupMap" class="palar-popup-map" style="margin-top:12px;width:100%;border-radius:12px;border:1px solid #E2E8F0;z-index:1"></div>
-            <p style="font-size:0.75rem;color:#6B7280;margin:6px 0 10px 0">📍 ${s.name}, Palar Village, Taguig City - Device Location</p>
-            ${isSuperAdminDashboard ? `<button class="btn-login" style="width:auto;padding:12px 30px" onclick="window.openPalarEditModal('${s.id}')">Edit Location</button>` : ''}
+            <p style="font-size:0.75rem;color:#6B7280;margin:6px 0 10px 0">📍 ${esc(s.name)}, Palar Village, Taguig City - Device Location</p>
+            ${isSuperAdminDashboard ? `<button class="btn-login" style="width:auto;padding:12px 30px" data-action="edit-location" data-station-id="${esc(s.id)}">Edit Location</button>` : ''}
         `;
     }
     if (stationModal) {
@@ -78,7 +79,7 @@ export function openPalarMapPopup(stationId) {
                 attribution: '© OpenStreetMap',
                 maxZoom: 19
             }).addTo(map);
-            window.L.marker([lat, lng]).addTo(map).bindPopup(s.name).openPopup();
+            window.L.marker([lat, lng]).addTo(map).bindPopup(esc(s.name)).openPopup();
             setTimeout(() => map.invalidateSize(), 200);
         }
     }, 100);
@@ -98,20 +99,20 @@ export function openPalarEditModal(stationId) {
         modalBody.innerHTML = `
             <div class="field">
                 <label>Device ID</label>
-                <input type="text" value="${s.id}" disabled style="background:#f3f4f6" />
+                <input type="text" value="${esc(s.id)}" disabled style="background:#f3f4f6" />
             </div>
             <div class="field">
                 <label>Street Name</label>
-                <input type="text" id="editStreetName" value="${s.name}" placeholder="e.g. Fox Street" />
+                <input type="text" id="editStreetName" value="${esc(s.name)}" placeholder="e.g. Fox Street" />
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div class="field">
                     <label>Latitude</label>
-                    <input type="text" id="editLat" value="${lat}" placeholder="14.5325" />
+                    <input type="text" id="editLat" value="${esc(lat)}" placeholder="14.5325" />
                 </div>
                 <div class="field">
                     <label>Longitude</label>
-                    <input type="text" id="editLng" value="${lng}" placeholder="121.0655" />
+                    <input type="text" id="editLng" value="${esc(lng)}" placeholder="121.0655" />
                 </div>
             </div>
             <div class="field">
@@ -120,8 +121,8 @@ export function openPalarEditModal(stationId) {
             </div>
             <div id="palarEditMap" style="margin-top:12px;height:300px;width:100%;border-radius:12px;border:1px solid #E2E8F0;z-index:1"></div>
             <div style="display:flex;gap:12px;margin-top:16px">
-                <button class="btn-login" style="width:auto;padding:12px 30px" onclick="window.savePalarLocation('${s.id}')">Save Location</button>
-                <button class="btn-login" style="width:auto;padding:12px 30px;background:#6B7280" onclick="document.getElementById('stationModal').classList.remove('active')">Cancel</button>
+                <button class="btn-login" style="width:auto;padding:12px 30px" data-action="save-location" data-station-id="${esc(s.id)}">Save Location</button>
+                <button class="btn-login" style="width:auto;padding:12px 30px;background:#6B7280" data-action="close-modal">Cancel</button>
             </div>
         `;
     }
@@ -145,7 +146,7 @@ export function openPalarEditModal(stationId) {
                 attribution: '© OpenStreetMap',
                 maxZoom: 19
             }).addTo(map);
-            const editMarker = window.L.marker([lat, lng], { draggable: true }).addTo(map).bindPopup(s.name).openPopup();
+            const editMarker = window.L.marker([lat, lng], { draggable: true }).addTo(map).bindPopup(esc(s.name)).openPopup();
             const updateLatLngInputs = (mLat, mLng) => {
                 const latInput = document.getElementById('editLat');
                 const lngInput = document.getElementById('editLng');
@@ -266,7 +267,7 @@ export function initTaguigMaps() {
                     sLat < 14.51 || sLat > 14.55 || sLng < 121.04 || sLng > 121.09) {
                     return;
                 }
-                window.L.marker([sLat, sLng]).addTo(map).bindPopup(`${sName}<br/>${s.status}<br/>${s.level} cm`);
+                window.L.marker([sLat, sLng]).addTo(map).bindPopup(`${esc(sName)}<br/>${esc(s.status)}<br/>${esc(s.level)} cm`);
                 locations.push([sLat, sLng]);
             });
             mapLocations.set(map, locations);

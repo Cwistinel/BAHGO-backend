@@ -1,5 +1,12 @@
 import { state } from '../state';
+import { esc } from './escape';
 import { getPalarBarangay } from './palarMap';
+
+function statusText(s) {
+    const base = s.status.toUpperCase();
+    if (s.status !== 'offline') return base;
+    return base + ' - LAST KNOWN: ' + (s.lastKnownStatus || 'safe').toUpperCase();
+}
 
 export function updateCounts() {
     const critical = state.stations.filter(s => s.status === 'critical').length;
@@ -13,24 +20,26 @@ export function updateCounts() {
     set('warningCount', warning);         set('superWarningCount', warning);
     set('normalCount', normal);           set('superNormalCount', normal);
     set('activeCount', active);           set('superActiveCount', active);
-    set('offlineCount', offline);         set('superOfflineCount', offline);
-}
+    const atRisk = state.stations.filter(s => s.status === 'offline' && (s.lastKnownStatus === 'critical' || s.lastKnownStatus === 'warning')).length;
+    const offlineText = atRisk > 0 ? offline + ' (' + atRisk + ' last known at risk)' : offline;
+    set('offlineCount', offlineText);     set('superOfflineCount', offlineText);
+    }
 
 export function renderStations() {
     const grid = document.getElementById('stationGrid');
     const superGrid = document.getElementById('superStationGrid');
     if (!grid && !superGrid) return;
     const html = state.stations.map(s => `
-        <div class="station-card" onclick="openStationModal('${s.id}')" style="position:relative">
+        <div class="station-card" data-action="open-station" data-station-id="${esc(s.id)}" style="position:relative">
             <div class="card-header-icons" style="display:flex;gap:8px;align-items:center;position:absolute;top:12px;right:12px">
-                <button class="map-icon-btn" onclick="event.stopPropagation(); window.openPalarMapPopup('${s.id}')" title="View Palar Map" aria-label="View Palar Map">
+                <button class="map-icon-btn" data-action="open-map" data-station-id="${esc(s.id)}" title="View Palar Map" aria-label="View Palar Map">
                     <img src="/Image/marker.png" alt="Palar map marker" style="width:18px;height:18px;display:block;object-fit:contain;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.2));" />
                 </button>
                 <span class="dot ${s.status === 'safe' ? 'green' : s.status === 'warning' ? 'yellow' : s.status === 'critical' ? 'red' : 'offline'}"></span>
             </div>
             <div class="s-header">
                 <div>
-                    <h3>${s.name}</h3>
+                    <h3>${esc(s.name)}</h3>
                     <p class="location-text" style="font-size: 0.75rem; color: #6B7280;">${getPalarBarangay(s.name, 0)}, Taguig</p>
                     <p style="font-size: 0.75rem; color: #888;">${new Date(s.timestamp).toLocaleString()}</p>
                 </div>
@@ -40,7 +49,7 @@ export function renderStations() {
                 <div class="s-row"><span>Precipitation:</span><span class="val">${s.precip} mm/hr</span></div>
                 <div class="s-row"><span>Rise Rate:</span><span class="val">${s.rate} cm/hr</span></div>
             </div>
-            <div class="s-label ${s.status}">${s.status.toUpperCase()}</div>
+            <div class="s-label ${s.status}">${statusText(s)}</div>
         </div>
     `).join('');
     if (grid) grid.innerHTML = html;
@@ -53,13 +62,13 @@ export function renderTable(filter = '') {
     if (!tbody && !superTbody) return;
     const filtered = state.stations.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
     const rows = filtered.map(s => `
-        <tr onclick="openStationModal('${s.id}')">
-            <td>${s.name}</td>
+        <tr data-action="open-station" data-station-id="${esc(s.id)}">
+            <td>${esc(s.name)}</td>
             <td>${s.level} cm</td>
             <td>${s.precip} mm/hr</td>
             <td>${s.rate} cm/hr</td>
             <td>${new Date(s.timestamp).toLocaleString()}</td>
-            <td><span class="status-badge ${s.status}">${s.status.toUpperCase()}</span></td>
+            <td><span class="status-badge ${s.status}">${statusText(s)}</span></td>
         </tr>
     `).join('');
     if (tbody) tbody.innerHTML = rows;
