@@ -11,13 +11,9 @@ import { renderTaguigMaps, stationLocations, listenToStationLocations } from './
 const SENSOR_MOUNT_HEIGHT_CM = 88.9;
 const WARN_LEVEL_CM = 44.45;
 const CRIT_LEVEL_CM = 83.82;
-// Match the backend: mark offline only after 30 missed 5-second sensor updates.
 const OFFLINE_AFTER_SEC = 150;
-// The rise-rate model below was trained on a small prototype scale (levels up to 7.62 cm),
-// so levels are scaled down before the model and the result is scaled back up.
 const ML_SCALE = 7.62 / SENSOR_MOUNT_HEIGHT_CM;
 
-// Coefficients for the linear rise-rate model, trained offline and baked in here.
 const ML_INTERCEPT = 0.4853274789608488;
 const ML_COEFS = [0.28838929176029493, 2.308913517624719, -1.4872272003480662, -0.07209977300363027, 0.19923314282525553, 0.007294433872660001, 0.5957491461495974, 0.0034158286180801718, 0.0, 0.0, -0.8160093786547183, 1.1515807293933271, -1.0982686162850888, -0.14217436522030538, -0.2142782521256309];
 const ML_SCALER_MEANS = [4.979546286132464, 0.9707281375777533, 12.08233321136725, 1.4164371469816792, 0.4941102112609621, 74.08003049152346, 3.8851274545676304, 0.15453104037077692, 0.0, 0.0, 105.02214062690574, 407.79307269179185, 0.943632381677064, 0.7479950752842007, 6.116260323429428];
@@ -107,7 +103,6 @@ const status = secondsSinceUpdate > OFFLINE_AFTER_SEC ? 'offline' : levelStatus;
             renderTaguigMaps();
         }
     });
-    // one unsubscribe handle that stops both listeners (logout handlers already call it)
     state.stationsUnsubscribe = () => {
         unsubscribeStations();
         unsubscribeLocations();
