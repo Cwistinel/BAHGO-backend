@@ -7,23 +7,27 @@ function App() {
     if (typeof window.initBahgoApp === 'function') {
       window.initBahgoApp();
     }
-    if (!document.getElementById('leaflet-css')) {
+        // ---- MapLibre + PMTiles (NOAH hazard) loader ----
+    if (!document.getElementById('maplibre-css')) {
       const link = document.createElement('link');
-      link.id = 'leaflet-css';
+      link.id = 'maplibre-css';
       link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      link.href = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
       document.head.appendChild(link);
     }
-    if (!window.L) {
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = () => {
-        if (window.initTaguigMaps) window.initTaguigMaps();
-      };
-      document.head.appendChild(script);
-    } else if (window.initTaguigMaps) {
-      window.initTaguigMaps();
-    }
+    const loadScript = (src) => new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    const loadMapLibs = async () => {
+      if (!window.maplibregl) await loadScript('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js');
+      if (!window.pmtiles) await loadScript('https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js');
+      if (window.initTaguigMaps) window.initTaguigMaps();
+    };
+    loadMapLibs().catch(err => console.warn('Map libraries failed to load:', err));
   }, []);
 
   return (

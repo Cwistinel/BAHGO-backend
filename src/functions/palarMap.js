@@ -31,9 +31,95 @@ export function getPalarBarangay(name, idx) {
     return BARANGAYS[idx % BARANGAYS.length];
 }
 
+// ================= MAPLIBRE + NOAH HAZARD HELPERS =================
+const NOAH_PMTILES_URL = 'pmtiles://https://huggingface.co/datasets/bettergovph/project-noah-hazard-maps/resolve/main/PMTiles/noah_hazard_maps.pmtiles';
+
+const STATUS_COLORS = { safe: '#22C55E', warning: '#F59E0B', critical: '#EF4444', offline: '#6B7280' };
+
+// Hazard layers: id, label, NOAH source-layer, attribute, colors for level 1/2/3
+const NOAH_LAYERS = [
+    { id: 'noah-flood-5yr', label: 'Flood 5-year', layer: 'flood_5yr', attr: 'Var', colors: ['#bfdbfe', '#60a5fa', '#1d4ed8'], visible: true }
+];
+
+function baseStyle() {
+    return {
+        version: 8,
+        sources: {
+            osm: {
+                type: 'raster',
+                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                maxzoom: 19,
+                attribution: '© OpenStreetMap'
+            }
+        },
+        layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+    };
+}
+
+function ensurePmtilesProtocol() {
+    if (window._pmtilesRegistered) return;
+    if (window.maplibregl && window.pmtiles) {
+        const protocol = new window.pmtiles.Protocol();
+        window.maplibregl.addProtocol('pmtiles', protocol.tile);
+        window._pmtilesRegistered = true;
+    }
+}
+
+export function createMap(elementId, lat, lng, zoom) {
+    if (!window.maplibregl) return null;
+    ensurePmtilesProtocol();
+    const map = new window.maplibregl.Map({
+        container: elementId,
+        style: baseStyle(),
+        center: [lng, lat],      // MapLibre uses [lng, lat]
+        zoom: zoom,
+        maxZoom: 19,
+        attributionControl: { compact: true }
+    });
+    map.addControl(new window.maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    return map;
+}
+
+function addHazardLayers(map, withControl) {
+    const add = () => {
+        if (!window._pmtilesRegistered || map.getSource('noah')) return;
+        map.addSource('noah', { type: 'vector', url: NOAH_PMTILES_URL, attribution: 'Hazard data: Project NOAH (ODbL)' });
+        NOAH_LAYERS.forEach(l => {
+            map.addLayer({
+                id: l.id,
+                type: 'fill',
+                source: 'noah',
+                'source-layer': l.layer,
+                layout: { visibility: l.visible ? 'visible' : 'none' },
+                paint: {
+                    'fill-color': ['match', ['get', l.attr], 1, l.colors[0], 2, l.colors[1], 3, l.colors[2], 'transparent'],
+                    'fill-opacity': 0.55
+                }
+            });
+        });
+    };
+    if (map.loaded()) add(); else map.once('load', add);
+    if (withControl) addHazardControl(map);
+}
+
+function addHazardControl(map) {
+    const box = document.createElement('div');
+    box.className = 'noah-control';
+    box.innerHTML = '<strong>NOAH Hazards</strong>' + NOAH_LAYERS.map(l =>
+        `<label><input type="checkbox" data-layer="${l.id}" ${l.visible ? 'checked' : ''}/> ${l.label}</label>`
+    ).join('') +
+    '<div class="noah-legend"><span style="background:#bfdbfe"></span>Low <span style="background:#60a5fa"></span>Med <span style="background:#1d4ed8"></span>High</div>';
+    box.addEventListener('change', (e) => {
+        const id = e.target.getAttribute('data-layer');
+        if (id && map.getLayer(id)) map.setLayoutProperty(id, 'visibility', e.target.checked ? 'visible' : 'none');
+    });
+    map.getContainer().appendChild(box);
+}
+
 export function renderTaguigMaps() {
-    if (window.updateLeafletMarkers) {
-        window.updateLeafletMarkers(state.stations);
+    if (window.updateMapMarkers) {
+        window.updateMapMarkers(state.stations);
     }
 }
 
@@ -72,15 +158,17 @@ export function openPalarMapPopup(stationId) {
         }
     }
     setTimeout(() => {
-        if (window.L && document.getElementById('palarPopupMap')) {
-            const map = window.L.map('palarPopupMap').setView([lat, lng], 19);
-            map.attributionControl.setPrefix('');
-            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap',
-                maxZoom: 19
-            }).addTo(map);
-            window.L.marker([lat, lng]).addTo(map).bindPopup(esc(s.name)).openPopup();
-            setTimeout(() => map.invalidateSize(), 200);
+        if (window.maplibregl && document.getElementById('palarPopupMap')) {
+            if (window._palarPopupMap) { window._palarPopupMap.remove(); window._palarPopupMap = null; }
+            const map = createMap('palarPopupMap', lat, lng, 18);
+            window._palarPopupMap = map;
+            addHazardLayers(map, false);
+            new window.maplibregl.Marker({ color: STATUS_COLORS[s.status] || '#3B82F6' })
+                .setLngLat([lng, lat])
+                .setPopup(new window.maplibregl.Popup({ offset: 25 }).setText(s.name))  // setText = safe, no HTML
+                .addTo(map)
+                .togglePopup();
+            setTimeout(() => map.resize(), 200);
         }
     }, 100);
 }
@@ -139,24 +227,26 @@ export function openPalarEditModal(stationId) {
         }
     }
     setTimeout(() => {
-        if (window.L && document.getElementById('palarEditMap')) {
-            const map = window.L.map('palarEditMap').setView([lat, lng], 19);
-            map.attributionControl.setPrefix('');
-            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap',
-                maxZoom: 19
-            }).addTo(map);
-            const editMarker = window.L.marker([lat, lng], { draggable: true }).addTo(map).bindPopup(esc(s.name)).openPopup();
+        if (window.maplibregl && document.getElementById('palarEditMap')) {
+            if (window._palarEditMap) { window._palarEditMap.remove(); window._palarEditMap = null; }
+            const map = createMap('palarEditMap', lat, lng, 18);
+            window._palarEditMap = map;
+            addHazardLayers(map, false);
+            const editMarker = new window.maplibregl.Marker({ draggable: true })
+                .setLngLat([lng, lat])
+                .setPopup(new window.maplibregl.Popup({ offset: 25 }).setText(s.name))
+                .addTo(map)
+                .togglePopup();
             const updateLatLngInputs = (mLat, mLng) => {
                 const latInput = document.getElementById('editLat');
                 const lngInput = document.getElementById('editLng');
                 if (latInput) latInput.value = mLat.toFixed(6);
                 if (lngInput) lngInput.value = mLng.toFixed(6);
             };
-            editMarker.on('dragend', function(e) {
-                const pos = e.target.getLatLng();
+            editMarker.on('dragend', function() {
+                const pos = editMarker.getLngLat();
                 updateLatLngInputs(pos.lat, pos.lng);
-                map.setView(pos, 19);
+                map.easeTo({ center: [pos.lng, pos.lat] });
             });
             const latInput = document.getElementById('editLat');
             const lngInput = document.getElementById('editLng');
@@ -165,14 +255,14 @@ export function openPalarEditModal(stationId) {
                     const newLat = parseFloat(latInput.value);
                     const newLng = parseFloat(lngInput.value);
                     if (!isNaN(newLat) && !isNaN(newLng)) {
-                        editMarker.setLatLng([newLat, newLng]);
-                        map.setView([newLat, newLng], 19);
+                        editMarker.setLngLat([newLng, newLat]);
+                        map.easeTo({ center: [newLng, newLat], zoom: 18 });
                     }
                 };
                 latInput.addEventListener('change', moveMarkerFromInputs);
                 lngInput.addEventListener('change', moveMarkerFromInputs);
             }
-            setTimeout(() => map.invalidateSize(), 200);
+            setTimeout(() => map.resize(), 200);
         }
     }, 100);
 }
@@ -207,26 +297,23 @@ export async function savePalarLocation(stationId) {
 }
 
 export function initTaguigMaps() {
-    if (!window.L) return;
+    if (!window.maplibregl || !window.pmtiles) return;
     const initMap = (elementId, mapLat, mapLng, zoom) => {
         const el = document.getElementById(elementId);
         if (!el) return null;
-        if (el._leaflet_id) {
-            el._leaflet_map.invalidateSize();
-            return el._leaflet_map;
+        if (el._maplibre_map) {
+            el._maplibre_map.resize();
+            return el._maplibre_map;
         }
-        const map = window.L.map(elementId).setView([mapLat, mapLng], zoom);
-        map.attributionControl.setPrefix('');
-        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap',
-            maxZoom: 19
-        }).addTo(map);
-        el._leaflet_map = map;
-        setTimeout(() => map.invalidateSize(), 300);
+        const map = createMap(elementId, mapLat, mapLng, zoom);
+        addHazardLayers(map, true);
+        map._stationMarkers = [];
+        el._maplibre_map = map;
+        setTimeout(() => map.resize(), 300);
         return map;
     };
-    window.taguigMap = initMap('taguigMap', 14.5176, 121.05, 13);
-    window.superTaguigMap = initMap('superTaguigMap', 14.5176, 121.05, 13);
+    window.taguigMap = initMap('taguigMap', 14.5325, 121.0655, 18);
+    window.superTaguigMap = initMap('superTaguigMap', 14.5325, 121.0655, 18);
     const mapLocations = new WeakMap();
     const fitMapToLocations = (map) => {
         const locations = mapLocations.get(map) || [];
@@ -235,22 +322,19 @@ export function initTaguigMaps() {
                 ([latTotal, lngTotal], [lat, lng]) => [latTotal + lat, lngTotal + lng],
                 [0, 0]
             );
-            map.setView(
-                [center[0] / locations.length, center[1] / locations.length],
-                19
-            );
+            map.jumpTo({
+                center: [center[1] / locations.length, center[0] / locations.length],
+                zoom: 18
+            });
         }
     };
 
-    window.updateLeafletMarkers = (stations) => {
+    window.updateMapMarkers = (stations) => {
         [window.taguigMap, window.superTaguigMap].forEach(map => {
             if (!map) return;
             const locations = [];
-            map.eachLayer(layer => {
-                if (layer instanceof window.L.Marker) {
-                    map.removeLayer(layer);
-                }
-            });
+            (map._stationMarkers || []).forEach(m => m.remove());
+            map._stationMarkers = [];
             stations.forEach((s, idx) => {
                 const savedLoc = stationLocations[s.id] || null;
                 let sLat, sLng, sName;
@@ -267,7 +351,13 @@ export function initTaguigMaps() {
                     sLat < 14.51 || sLat > 14.55 || sLng < 121.04 || sLng > 121.09) {
                     return;
                 }
-                window.L.marker([sLat, sLng]).addTo(map).bindPopup(`${esc(sName)}<br/>${esc(s.status)}<br/>${esc(s.level)} cm`);
+                const popup = new window.maplibregl.Popup({ offset: 25 })
+                    .setHTML(`${esc(sName)}<br/>${esc(s.status)}<br/>${esc(s.level)} cm`);
+                const marker = new window.maplibregl.Marker({ color: STATUS_COLORS[s.status] || '#3B82F6' })
+                    .setLngLat([sLng, sLat])
+                    .setPopup(popup)
+                    .addTo(map);
+                map._stationMarkers.push(marker);
                 locations.push([sLat, sLng]);
             });
             mapLocations.set(map, locations);
@@ -279,25 +369,37 @@ export function initTaguigMaps() {
         btn.addEventListener('click', () => {
             setTimeout(() => {
                 if (window.taguigMap) {
-                    window.taguigMap.invalidateSize();
+                    window.taguigMap.resize();
                     fitMapToLocations(window.taguigMap);
                 }
             }, 300);
+            setTimeout(() => {
+                if (window.taguigMap) {
+                    window.taguigMap.resize();
+                    fitMapToLocations(window.taguigMap);
+                }
+            }, 800);
         });
     });
     document.querySelectorAll('.nav-btn[data-page="superMapView"]').forEach(btn => {
         btn.addEventListener('click', () => {
             setTimeout(() => {
                 if (window.superTaguigMap) {
-                    window.superTaguigMap.invalidateSize();
+                    window.superTaguigMap.resize();
                     fitMapToLocations(window.superTaguigMap);
                 }
             }, 300);
+            setTimeout(() => {
+                if (window.superTaguigMap) {
+                    window.superTaguigMap.resize();
+                    fitMapToLocations(window.superTaguigMap);
+                }
+            }, 800);
         });
     });
 
     if (state.stations.length > 0) {
-        window.updateLeafletMarkers(state.stations);
+        window.updateMapMarkers(state.stations);
     }
 }
 
