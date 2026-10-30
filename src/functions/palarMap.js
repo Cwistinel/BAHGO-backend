@@ -306,7 +306,7 @@ export function initTaguigMaps() {
         }
         const map = createMap(elementId, mapLat, mapLng, zoom);
         addHazardLayers(map, true);
-        map._stationMarkers = [];
+        map._stationMarkers = {};
         el._maplibre_map = map;
         setTimeout(() => map.resize(), 300);
         return map;
@@ -332,8 +332,7 @@ export function initTaguigMaps() {
         [window.taguigMap, window.superTaguigMap].forEach(map => {
             if (!map) return;
             const locations = [];
-            (map._stationMarkers || []).forEach(m => m.remove());
-            map._stationMarkers = [];
+            const seen = new Set();
             stations.forEach((s, idx) => {
                 const savedLoc = stationLocations[s.id] || null;
                 let sLat, sLng, sName;
@@ -350,17 +349,21 @@ export function initTaguigMaps() {
                     sLat < 14.51 || sLat > 14.55 || sLng < 121.04 || sLng > 121.09) {
                     return;
                 }
-                const popup = new window.maplibregl.Popup({ offset: 25 })
-                    .setHTML(`${esc(sName)}<br/>${esc(s.status)}<br/>${esc(s.level)} cm`);
-                const marker = new window.maplibregl.Marker({ color: STATUS_COLORS[s.status] || '#3B82F6' })
-                    .setLngLat([sLng, sLat])
-                    .setPopup(popup)
-                    .addTo(map);
-                map._stationMarkers.push(marker);
+                const color = STATUS_COLORS[s.status] || '#3B82F6';
+                let marker = map._stationMarkers[s.id];
+                if (marker && marker._color !== color) { marker.remove(); marker = null; }
+                if (!marker) {
+                    marker = new window.maplibregl.Marker({ color }).setPopup(new window.maplibregl.Popup({ offset: 25 })).addTo(map);
+                    marker._color = color;
+                    map._stationMarkers[s.id] = marker;
+                }
+                marker.setLngLat([sLng, sLat]).getPopup().setHTML(`${esc(sName)}<br/>${esc(s.status)}<br/>${esc(s.level)} cm`);
+                seen.add(s.id);
                 locations.push([sLat, sLng]);
             });
+            Object.keys(map._stationMarkers).filter(id => !seen.has(id)).forEach(id => { map._stationMarkers[id].remove(); delete map._stationMarkers[id]; });
             mapLocations.set(map, locations);
-            if (map.getContainer().getClientRects().length > 0) fitMapToLocations(map);
+            if (!map._fitted && locations.length && map.getContainer().getClientRects().length > 0) { fitMapToLocations(map); map._fitted = true; }
         });
     };
 

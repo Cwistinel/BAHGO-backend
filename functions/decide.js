@@ -3,7 +3,7 @@ const WARN_LEVEL_CM = 44.45;
 const CRIT_LEVEL_CM = 83.82;
 const OFFLINE_AFTER_SEC = 150;
 const COOLDOWN_MS = 30 * 60 * 1000;
-const SEND_BACK_ONLINE = true;
+const OFFLINE_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 const DEVICE_UTC_OFFSET_HOURS = 8;
 
 function parseTimestamp(v) {
@@ -44,7 +44,7 @@ function decide(st, s, now, name) {
   const offline = ageSec > OFFLINE_AFTER_SEC;
 
   if (offline) {
-    if (now - (st.lastOfflineEmail || 0) > COOLDOWN_MS) {
+    if (now - (st.lastOfflineEmail || 0) > OFFLINE_COOLDOWN_MS) {
       events.push({
         subject: 'URGENT: ' + name + ' is Offline!',
         line: name + ' has stopped reporting (last update about ' + Math.round(ageSec / 60) + ' minute(s) ago).'
@@ -54,7 +54,7 @@ function decide(st, s, now, name) {
     }
   } else if (st.offline) {
     next.offline = false;
-    if (SEND_BACK_ONLINE) events.push({ subject: 'Back Online: ' + name, line: name + ' is reporting data again.' });
+    events.push({ subject: 'Back Online: ' + name, line: name + ' is reporting data again.' });
   }
 
   if (!offline && s.Distance_cm !== undefined && s.Distance_cm !== null) {
@@ -77,4 +77,4 @@ function decide(st, s, now, name) {
   return { events, next };
 }
 
-module.exports = { parseTimestamp, decide, COOLDOWN_MS };
+module.exports = { parseTimestamp, decide, OFFLINE_COOLDOWN_MS };

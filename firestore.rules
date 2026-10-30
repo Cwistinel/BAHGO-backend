@@ -27,12 +27,5 @@ service cloud.firestore {
       allow read: if isStaff();
       allow write: if isSuper();
     }
-
-    match /{collection}/{docId} {
-      allow read: if collection.matches('sensor_readings[0-9]+') && isStaff();
-      // Only if your devices write history straight to Firestore without logging in,
-      // remove the two slashes at the start of the next line:
-      // allow create: if collection.matches('sensor_readings[0-9]+');
-    }
   }
 }

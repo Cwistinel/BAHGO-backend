@@ -142,7 +142,8 @@ choose alert-email recipients, so keep it in sync. An account with no
 | Critical | water ≥ 83.82 cm or raw rain ≤ 1200 |
 | Offline | no update for 150 s (30 missed 5 s readings) |
 | Check interval | 1 minute |
-| Warning/offline cooldown | 30 minutes |
+| Warning cooldown | 30 minutes |
+| Offline reminder | every 6 hours |
 | Critical alerts | sent immediately, no cooldown |
 
 Emails go to every user whose `users.role` is `Admin` or `Super User`. A recovery

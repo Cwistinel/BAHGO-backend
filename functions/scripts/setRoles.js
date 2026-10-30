@@ -1,8 +1,8 @@
 const admin = require('firebase-admin');
 admin.initializeApp();
 
-// Usage: node setRoles.js super1@example.com super2@example.com
 const SUPER = process.argv.slice(2).map((e) => e.toLowerCase());
+  if (SUPER.length === 0) { console.error('Give at least one super email.'); process.exit(1); }
 
 async function main() {
   let pageToken;

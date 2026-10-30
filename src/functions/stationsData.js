@@ -1,6 +1,8 @@
 import { ref, onValue } from 'firebase/database';
 import { rtdb } from '../firebase';
 import { state } from '../state';
+import { showToast } from './notifications';
+import { parseTimestamp } from './parseTimestamp';
 import { renderStations, renderTable, updateCounts } from './stationsRender';
 import { renderTaguigMaps, stationLocations, listenToStationLocations } from './palarMap';
 
@@ -53,11 +55,11 @@ export function loadStations() {
         state.stationsUnsubscribe();
     }
     const unsubscribeLocations = listenToStationLocations();
-    const stationsRef = ref(rtdb, '/');
-    const unsubscribeStations = onValue(stationsRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            const newStations = Object.entries(data).filter(([key, s]) => key.toLowerCase().includes('sensor')).map(([key, s]) => {
+    const raw = {};
+    const onData = () => {
+        const data = raw;
+        if (Object.keys(data).length) {
+            const newStations = Object.entries(data).sort(([a], [b]) => a.localeCompare(b)).map(([key, s]) => {
                 const distanceCm = s.Distance_cm ?? SENSOR_MOUNT_HEIGHT_CM;
                 const rawRain = s.Rain_Value ?? 4095;
                 const rainRatio = (4095 - rawRain) / 4095;
@@ -68,8 +70,8 @@ export function loadStations() {
                 const rate = Math.round((calculateRiseRate(actualWaterLevelCm * ML_SCALE, precip) / ML_SCALE) * 100) / 100;
                 const existingStation = state.stations.find(old => old.id === key);
                 const finalTimestamp = s.Last_Updated || (existingStation ? existingStation.timestamp : new Date().toISOString());
-                const now = new Date().getTime();
-                const lastUpdateMs = new Date(finalTimestamp).getTime();
+                const now = Date.now();
+                const lastUpdateMs = parseTimestamp(finalTimestamp);
                 const secondsSinceUpdate = (now - lastUpdateMs) / 1000;
                 let levelStatus = 'safe';
                 if (actualWaterLevelCm >= CRIT_LEVEL_CM || rawRain <= 1200) {
@@ -102,9 +104,13 @@ const status = secondsSinceUpdate > OFFLINE_AFTER_SEC ? 'offline' : levelStatus;
             updateCounts();
             renderTaguigMaps();
         }
-    });
+    };
+    const unsubs = [1, 2, 3, 4].map(n => onValue(ref(rtdb, 'Sensordata' + n), (snap) => {
+        if (snap.val()) raw['Sensordata' + n] = snap.val(); else delete raw['Sensordata' + n];
+        onData();
+    }, (err) => showToast('Cannot read station data: ' + err.message, 'error')));
     state.stationsUnsubscribe = () => {
-        unsubscribeStations();
+        unsubs.forEach(u => u());
         unsubscribeLocations();
     };
     return state.stationsUnsubscribe;

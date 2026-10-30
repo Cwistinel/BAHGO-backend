@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { parseTimestamp, decide, COOLDOWN_MS } = require('./decide');
+const { parseTimestamp, decide, OFFLINE_COOLDOWN_MS } = require('./decide');
 
 const NOW = Date.parse('2026-05-13T04:00:00Z');
 const fresh = { Last_Updated: NOW / 1000 - 10, Distance_cm: 88.9, Rain_Value: 4095 };
@@ -19,7 +19,7 @@ test('decide: [description, prevState, reading, expected email count, expected s
   const rows = [
     ['first offline -> email', {}, stale, 1, { offline: true, lastOfflineEmail: NOW }],
     ['offline within cooldown -> silent', { offline: true, lastOfflineEmail: NOW - 1000 }, stale, 0, {}],
-    ['offline after cooldown -> reminder', { offline: true, lastOfflineEmail: NOW - COOLDOWN_MS - 1 }, stale, 1, { offline: true, lastOfflineEmail: NOW }],
+    ['offline after cooldown -> reminder', { offline: true, lastOfflineEmail: NOW - OFFLINE_COOLDOWN_MS - 1 }, stale, 1, { offline: true, lastOfflineEmail: NOW }],
     ['recovered -> back online', { offline: true }, fresh, 1, { offline: false }],
     ['safe -> critical -> email', {}, { ...fresh, Distance_cm: 1 }, 1, { floodStatus: 'critical', lastFloodEmail: NOW }],
     ['same warning again -> silent', { floodStatus: 'warning' }, { ...fresh, Distance_cm: 40 }, 0, {}],
