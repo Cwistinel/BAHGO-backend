@@ -19,6 +19,7 @@ test('decide: [description, prevState, reading, expected email count, expected s
   const rows = [
     ['first offline -> email', {}, stale, 1, { offline: true, lastOfflineEmail: NOW }],
     ['offline within cooldown -> silent', { offline: true, lastOfflineEmail: NOW - 1000 }, stale, 0, {}],
+    ['re-offline after recovery inside cooldown -> email', { offline: false, lastOfflineEmail: NOW - 1000 }, stale, 1, { offline: true, lastOfflineEmail: NOW }],
     ['offline after cooldown -> reminder', { offline: true, lastOfflineEmail: NOW - OFFLINE_COOLDOWN_MS - 1 }, stale, 1, { offline: true, lastOfflineEmail: NOW }],
     ['recovered -> back online', { offline: true }, fresh, 1, { offline: false }],
     ['safe -> critical -> email', {}, { ...fresh, Distance_cm: 1 }, 1, { floodStatus: 'critical', lastFloodEmail: NOW }],

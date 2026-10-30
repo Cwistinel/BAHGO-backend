@@ -44,7 +44,7 @@ function decide(st, s, now, name) {
   const offline = ageSec > OFFLINE_AFTER_SEC;
 
   if (offline) {
-    if (now - (st.lastOfflineEmail || 0) > OFFLINE_COOLDOWN_MS) {
+    if (!st.offline || now - (st.lastOfflineEmail || 0) > OFFLINE_COOLDOWN_MS) {
       events.push({
         subject: 'URGENT: ' + name + ' is Offline!',
         line: name + ' has stopped reporting (last update about ' + Math.round(ageSec / 60) + ' minute(s) ago).'

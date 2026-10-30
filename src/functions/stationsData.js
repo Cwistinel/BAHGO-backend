@@ -45,8 +45,6 @@ export function calculateRiseRate(water_level, precipitation) {
         prediction += scaledValue * ML_COEFS[i];
     }
     if (prediction < 0) prediction = 0;
-    const DEMO_DAMPENER = 0.05;
-    prediction = prediction * DEMO_DAMPENER;
     return Math.round(prediction * 100) / 100;
 }
 
@@ -95,7 +93,7 @@ const status = secondsSinceUpdate > OFFLINE_AFTER_SEC ? 'offline' : levelStatus;
                     rate: rate,
                     status: status,
                     lastKnownStatus: levelStatus,
-                    timestamp: finalTimestamp
+                    timestamp: lastUpdateMs ?? finalTimestamp
                 };
             });
             state.stations = newStations;

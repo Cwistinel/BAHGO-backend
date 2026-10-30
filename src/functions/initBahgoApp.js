@@ -207,7 +207,7 @@ export function initBahgoApp() {
                 document.getElementById('dashboardScreen')?.classList.remove('active');
                 document.getElementById('superUserScreen')?.classList.remove('active');
                 document.getElementById('loginScreen')?.classList.add('active');
-                applyAvatar('');
+                applyAvatar(''); state.stationsUnsubscribe?.(); state.stationsUnsubscribe = null;
                 const loginEmail = document.getElementById('loginEmail'); const loginPass = document.getElementById('loginPass');
                 if (loginEmail) loginEmail.value = ''; if (loginPass) loginPass.value = '';
             }

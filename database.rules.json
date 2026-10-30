@@ -1,0 +1,7 @@
+{
+  "rules": {
+    "$node": {
+      ".read": "$node.matches(/^Sensordata[1-4]$/) && (auth.token.role === 'admin' || auth.token.role === 'super')"
+    }
+  }
+}

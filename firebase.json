@@ -2,6 +2,9 @@
   "firestore": {
     "rules": "firestore.rules"
   },
+  "database": {
+    "rules": "database.rules.json"
+  },
   "hosting": {
     "site": "bahgo",
     "public": "build",
@@ -18,7 +21,7 @@
     ],
     "predeploy": [
       "npm run build"
-    ],
+    ], 
     "headers": [
       {
         "source": "**",
