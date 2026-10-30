@@ -93,7 +93,7 @@ const status = secondsSinceUpdate > OFFLINE_AFTER_SEC ? 'offline' : levelStatus;
                     rate: rate,
                     status: status,
                     lastKnownStatus: levelStatus,
-                    timestamp: lastUpdateMs ?? finalTimestamp
+                    timestamp: finalTimestamp
                 };
             });
             state.stations = newStations;
