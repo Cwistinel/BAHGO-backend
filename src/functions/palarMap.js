@@ -345,15 +345,12 @@ export function initTaguigMaps() {
                     sLng = 121.0655 + (idx * 0.0002);
                     sName = s.name;
                 }
-                if (!Number.isFinite(sLat) || !Number.isFinite(sLng) ||
-                    sLat < 14.51 || sLat > 14.55 || sLng < 121.04 || sLng > 121.09) {
-                    return;
-                }
+                if (!Number.isFinite(sLat) || !Number.isFinite(sLng)) return;
                 const color = STATUS_COLORS[s.status] || '#3B82F6';
                 let marker = map._stationMarkers[s.id];
                 if (marker && marker._color !== color) { marker.remove(); marker = null; }
                 if (!marker) {
-                    marker = new window.maplibregl.Marker({ color }).setPopup(new window.maplibregl.Popup({ offset: 25 })).addTo(map);
+                    marker = new window.maplibregl.Marker({ color }).setLngLat([sLng, sLat]).setPopup(new window.maplibregl.Popup({ offset: 25 })).addTo(map);
                     marker._color = color;
                     map._stationMarkers[s.id] = marker;
                 }
