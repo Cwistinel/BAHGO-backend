@@ -363,7 +363,9 @@ export function initTaguigMaps() {
             });
             Object.keys(map._stationMarkers).filter(id => !seen.has(id)).forEach(id => { map._stationMarkers[id].remove(); delete map._stationMarkers[id]; });
             mapLocations.set(map, locations);
-            if (!map._fitted && locations.length && map.getContainer().getClientRects().length > 0) { fitMapToLocations(map); map._fitted = true; }
+            // Re-fit when station coords change (fallback -> Firestore, or an edited location), not on every status tick.
+            const fitKey = locations.map(l => l.join(',')).join('|');
+            if (fitKey !== map._fitKey && locations.length && map.getContainer().getClientRects().length > 0) { fitMapToLocations(map); map._fitKey = fitKey; }
         });
     };
 
