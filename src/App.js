@@ -13,18 +13,22 @@ function App() {
       link.id = 'maplibre-css';
       link.rel = 'stylesheet';
       link.href = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
+      link.integrity = 'sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V';
+      link.crossOrigin = 'anonymous';
       document.head.appendChild(link);
     }
-    const loadScript = (src) => new Promise((resolve, reject) => {
+    const loadScript = (src, integrity) => new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = src;
+      s.integrity = integrity;
+      s.crossOrigin = 'anonymous';
       s.onload = resolve;
       s.onerror = reject;
       document.head.appendChild(s);
     });
     const loadMapLibs = async () => {
-      if (!window.maplibregl) await loadScript('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js');
-      if (!window.pmtiles) await loadScript('https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js');
+      if (!window.maplibregl) await loadScript('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js', 'sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj');
+      if (!window.pmtiles) await loadScript('https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js', 'sha384-QfbOCebHNw8pQiPAOd2IFee2v2A5VYZxBk0+JGZ5H+3mfzVIp6zsQNkTsfGJot93');
       if (window.initTaguigMaps) window.initTaguigMaps();
     };
     loadMapLibs().catch(err => console.warn('Map libraries failed to load:', err));
@@ -48,7 +52,7 @@ function App() {
             <div className="login-box">
               <h2>Sign in</h2>
               <p className="sub">Login to access Admin Dashboard</p>
-              <div>
+              <form>
                 <div className="field">
                   <label>Email address</label>
                   <input type="email" id="loginEmail" placeholder="Enter your email" />
@@ -59,8 +63,8 @@ function App() {
                   <input type="password" id="loginPass" placeholder="Enter your password" />
                   <div id="passwordError" className="error-bubble" style={{ display: 'none' }} />
                 </div>
-                <button type="button" id="loginBtn" className="btn-login">Log in</button>
-              </div>
+                <button type="submit" id="loginBtn" className="btn-login">Log in</button>
+              </form>
             </div>
           </div>
         </div>

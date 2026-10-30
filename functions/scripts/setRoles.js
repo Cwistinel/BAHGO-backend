@@ -1,24 +1,19 @@
 const admin = require('firebase-admin');
 admin.initializeApp();
 
-const SUPER = [
-  'kaye.01012@gmail.com',
-  'lollypopcurrent@gmail.com',
-  'sopiasargado@gmail.com',
-  'itsnana.hanna@gmail.com'
-];
+// Usage: node setRoles.js super1@example.com super2@example.com
+const SUPER = process.argv.slice(2).map((e) => e.toLowerCase());
 
 async function main() {
   let pageToken;
   do {
     const page = await admin.auth().listUsers(1000, pageToken);
     for (const u of page.users) {
+      const ref = admin.firestore().doc('users/' + u.uid);
+      if (!(await ref.get()).exists) { console.log(u.email + ' -> skipped (no users doc)'); continue; }
       const role = SUPER.includes((u.email || '').toLowerCase()) ? 'super' : 'admin';
       await admin.auth().setCustomUserClaims(u.uid, { role });
-      const ref = admin.firestore().doc('users/' + u.uid);
-      if ((await ref.get()).exists) {
-        await ref.update({ role: role === 'super' ? 'Super User' : 'Admin' });
-      }
+      await ref.update({ role: role === 'super' ? 'Super User' : 'Admin' });
       console.log(u.email + ' -> ' + role);
     }
     pageToken = page.pageToken;

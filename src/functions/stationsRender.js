@@ -58,7 +58,7 @@ export function renderStations() {
     if (superGrid) superGrid.innerHTML = html;
 }
 
-export function renderTable(filter = '') {
+export function renderTable(filter = document.getElementById('searchInput')?.value || document.getElementById('superSearchInput')?.value || '') {
     const tbody = document.getElementById('stationTableBody');
     const superTbody = document.getElementById('superStationTableBody');
     if (!tbody && !superTbody) return;

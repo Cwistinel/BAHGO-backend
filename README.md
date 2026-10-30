@@ -17,7 +17,7 @@ Live demo: [bahgo.web.app](https://bahgo.web.app)
 - Safe / Warning / Critical / Offline status
 - Email alerts and a 1-hour trend chart per station
 - Map with station markers and the Project NOAH hazard layer
-- Super-admin user management with a forced first-login password change
+- Super-admin user management with a first-login password prompt (client-side only, not enforced by the rules)
 
 ## How it works
 
@@ -26,8 +26,8 @@ ESP32 (5 s) -> RTDB Sensordata1..4 -> React dashboard
                                   -> checkStations (1 min) -> email + alert_state
 ```
 
-The station chart reads Firestore `sensor_readings1..4`; that history is written
-outside this repo.
+The station chart is a model-based 1-hour estimate from the live reading; it does
+not read Firestore history.
 
 ## Stack
 
@@ -91,15 +91,16 @@ and a Gmail account with an App Password.
    - In the Firebase console or with the Admin SDK, create `users/{uid}` with
      `email`, `name`, `role: "Super User"`, and `isFirstLogin: false`.
      Client creates are blocked by `firestore.rules`.
-   - Add the email to `SUPER` in `functions/scripts/setRoles.js`, then run:
+   - Run `setRoles.js` with the super admin email(s) as arguments. Accounts
+     without a `users/{uid}` document are skipped:
 
      ```sh
      GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json \
-       node functions/scripts/setRoles.js
+       node functions/scripts/setRoles.js you@example.com
      ```
 
      The script sets `super` for the listed emails and `admin` for every other
-     Auth user.
+     Auth user that has a `users/{uid}` document.
 
 7. Build and deploy:
 
@@ -109,18 +110,17 @@ and a Gmail account with an App Password.
    ```
 
 8. Create admins from **User Management** in the super dashboard. The app does
-   not email the temporary password; share it with them. They must change it on
-   first login.
+   not email the temporary password; share it with them. They are prompted to
+   change it on first login.
 
 The hosting site is fixed to `bahgo` in `firebase.json`; change it for your own
 project.
 
 ## Realtime Database rules
 
-This repo does not deploy RTDB rules. The dashboard reads the database root as a
-signed-in user, so authenticated users need read at the root; devices need write
-to `Sensordata1..4`. Root read exposes every root key, so keep unrelated data out
-of this database.
+This repo does not deploy RTDB rules. The dashboard and the alert function read only
+`Sensordata1..4`, so signed-in users need read on those four nodes (not the
+root); devices need write to them.
 
 ## Roles
 
@@ -154,7 +154,6 @@ email is sent when a station comes back online.
 |---|---|
 | `users/{uid}` | Profile, role, first-login flag |
 | `station_locations/{stationId}` | Latitude, longitude, and display name |
-| `sensor_readings1..4` | Historical readings for the chart |
 | `alert_state/{stationId}` | Last alert state (written by the function only) |
 
 | Realtime Database path | Purpose |
@@ -169,22 +168,22 @@ npm start                      # dashboard at http://localhost:3000
 npm --prefix functions run serve
 ```
 
-The frontend always uses the project in `.env`; emulators are not wired. There is
-no automated test suite. Before shipping:
+The frontend always uses the project in `.env`; emulators are not wired. The only
+tests cover the alert logic (`npm --prefix functions test`). Before shipping:
 
 ```sh
 npx eslint src
 CI=true npm run build
-node --check functions/index.js
+npm --prefix functions test
 ```
 
 ## Known limits
 
-- The dashboard reads the RTDB root, so each admin browser downloads
-  `RecordedData` history on load. Fine for four stations; if it grows, read only
-  `Sensordata1..4` in `src/functions/stationsData.js`.
-- The chart fetches each `sensor_readingsN` collection and keeps the last six.
-  Add a query limit if history grows.
+- The CSP in `firebase.json` only restricts `script-src` (CDNs are pinned with
+  integrity hashes); it does not restrict connections, images, or styles.
+- Thresholds and fallback station names exist in both `src/functions/stationsData.js`
+  and `functions/decide.js`; change them together. The `parseTimestamp` copies
+  in `src/functions/parseTimestamp.js` and `functions/decide.js` must also match.
 
 ## Troubleshooting
 

@@ -274,6 +274,10 @@ export async function savePalarLocation(stationId) {
         alert('Please enter valid latitude/longitude!');
         return;
     }
+    if (newLat < 14.51 || newLat > 14.55 || newLng < 121.04 || newLng > 121.09) {
+        alert('Latitude must be 14.51-14.55 and longitude 121.04-121.09 (Taguig).');
+        return;
+    }
     try {
         // Saved to Firestore -> every logged-in super user/admin receives it live via onSnapshot
         await setDoc(doc(db, 'station_locations', stationId), {

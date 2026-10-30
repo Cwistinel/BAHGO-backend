@@ -2,7 +2,7 @@ import './actions';
 import { auth } from '../firebase';
 import { state } from '../state';
 import { login, logout, watchAuthState } from './auth';
-import { loadUserProfile, saveUserProfile } from './settings';
+import { saveUserProfile } from './settings';
 import { showToast } from './notifications';
 import { updateClock } from './clock';
 import { switchPage, switchSuperPage, showDashboard, showSuperDashboard } from './navigation';
@@ -16,7 +16,8 @@ import { initAvatar, applyAvatar } from './avatar';
 export function initBahgoApp() {
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
-        loginBtn.onclick = async function() {
+        loginBtn.onclick = async function(e) {
+            e.preventDefault();
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPass').value;
             const emailErrorDiv = document.getElementById('emailError');
@@ -27,7 +28,7 @@ export function initBahgoApp() {
             if (!emailRegex.test(email)) { emailErrorDiv.textContent = 'Please enter a valid email address'; emailErrorDiv.style.display = 'block'; return; }
             if (!password) { passwordErrorDiv.textContent = 'Please enter a password'; passwordErrorDiv.style.display = 'block'; return; }
             try { loginBtn.disabled = true; loginBtn.textContent = 'Signing in...'; await login(email, password); }
-            catch (err) { passwordErrorDiv.textContent = err.message || 'Login failed.'; passwordErrorDiv.style.display = 'block'; }
+            catch (err) { passwordErrorDiv.textContent = err.code === 'auth/invalid-credential' ? 'Wrong email or password.' : (err.message || 'Login failed.'); passwordErrorDiv.style.display = 'block'; }
             finally { loginBtn.disabled = false; loginBtn.textContent = 'Log in'; }
         };
     }
@@ -160,8 +161,9 @@ export function initBahgoApp() {
             isSuper = false;
             }
                
+                let userDocSnap;
                 try {
-                    const userDocSnap = await getDoc(doc(db, 'users', user.uid));
+                    userDocSnap = await getDoc(doc(db, 'users', user.uid));
                     if (!userDocSnap.exists()) {
                         await signOut(auth);
                         document.getElementById('dashboardScreen')?.classList.remove('active');
@@ -189,7 +191,7 @@ export function initBahgoApp() {
                      return;
                 }
                 try {
-                    const data = await loadUserProfile(user.uid);
+                    const data = userDocSnap.data();
                     applyAvatar(data ? data.photoURL : '');
                     if (data) {
                         document.getElementById('userName').textContent = data.name || user.email;

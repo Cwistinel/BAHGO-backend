@@ -1,5 +1,3 @@
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
 import { state } from '../state';
 
 export async function openStationModal(id) {
@@ -15,7 +13,7 @@ export async function openStationModal(id) {
             ${s.status === 'offline' ? `<div class="s-row"><span>Last Known Status:</span><span class="val">${(s.lastKnownStatus || 'safe').toUpperCase()}</span></div>` : ''}
             <div class="s-row"><span>Last Updated:</span><span class="val">${new Date(s.timestamp).toLocaleString()}</span></div>
         </div>
-        <p style="margin-top: 20px; font-weight: 600; color: var(--text-muted);">1-Hour Predicted Trend</p>
+        <p style="margin-top: 20px; font-weight: 600; color: var(--text-muted);">1-Hour Predicted Trend (model estimate)</p>
     `;
 
     if (s.status === 'offline') {
@@ -50,47 +48,12 @@ export async function openStationModal(id) {
     canvas.style.display = 'block';
     const ctx = canvas.getContext('2d');
 
-    let historyLevels = [];
-    try {
-        const collectionMap = {
-            'sensordata1': 'sensor_readings1',
-            'sensordata2': 'sensor_readings2',
-            'sensordata3': 'sensor_readings3',
-            'sensordata4': 'sensor_readings4'
-        };
-
-        const collectionName = collectionMap[id.toLowerCase()] || id;
-        const histRef = collection(db, collectionName);
-        const snap = await getDocs(histRef);
-
-        let records = snap.docs.map(d => d.data());
-        records.sort((a, b) => new Date(a.timestamp || a.time || a.Last_Updated || 0) - new Date(b.timestamp || b.time || b.Last_Updated || 0));
-
-        let recent = records.slice(-6).map(r => {
-            if (r.level !== undefined) return r.level;
-            if (r.Distance_cm !== undefined) {
-                let actualLevel = 88.9 - r.Distance_cm;
-                return actualLevel < 0 ? 0 : Math.round(actualLevel * 100) / 100;
-            }
-            return 0;
-        });
-
-        while (recent.length < 6) {
-            recent.unshift(recent.length > 0 ? recent[0] : s.level);
-        }
-        historyLevels = recent;
-    } catch (e) {
-        historyLevels = [s.level, s.level, s.level, s.level, s.level, s.level];
-    }
-
-    const realWorldPastRate = s.level - historyLevels[0];
-    let fusedRiseRate = (s.rate * 0.6) + (realWorldPastRate * 0.4);
-    if (fusedRiseRate < 0) fusedRiseRate = 0;
+    const riseRate = Math.max(s.rate, 0); // cm/hr from the model
 
     const predictData = [s.level];
     let projectedLevel = s.level;
     for (let i = 10; i <= 60; i += 10) {
-        projectedLevel += (fusedRiseRate / 6);
+        projectedLevel += (riseRate / 6);
         predictData.push(Math.round(projectedLevel * 100) / 100);
     }
 
