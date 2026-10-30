@@ -47,7 +47,7 @@ function decide(st, s, now, name) {
     if (!st.offline || now - (st.lastOfflineEmail || 0) > OFFLINE_COOLDOWN_MS) {
       events.push({
         subject: 'URGENT: ' + name + ' is Offline!',
-        line: name + ' has stopped reporting (last update about ' + Math.round(ageSec / 60) + ' minute(s) ago).'
+        line: name + ' has stopped reporting (last update about ' + (ageSec < 7200 ? Math.round(ageSec / 60) + ' minute(s)' : ageSec < 172800 ? Math.round(ageSec / 3600) + ' hour(s)' : Math.round(ageSec / 86400) + ' day(s)') + ' ago).'
       });
       next.offline = true;
       next.lastOfflineEmail = now;
