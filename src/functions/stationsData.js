@@ -13,7 +13,7 @@ import { renderTaguigMaps, stationLocations, listenToStationLocations } from './
 const SENSOR_MOUNT_HEIGHT_CM = 88.9;
 const WARN_LEVEL_CM = 44.45;
 const CRIT_LEVEL_CM = 83.82;
-const OFFLINE_AFTER_SEC = 150;
+export const OFFLINE_AFTER_SEC = 150;
 const ML_SCALE = 7.62 / SENSOR_MOUNT_HEIGHT_CM;
 
 const ML_INTERCEPT = 0.4853274789608488;

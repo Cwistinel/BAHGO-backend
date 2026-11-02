@@ -29,7 +29,7 @@ export const getPalarBarangay = (name) => (name.toLowerCase().includes('palar') 
 // ================= MAPLIBRE + NOAH HAZARD HELPERS =================
 const NOAH_PMTILES_URL = 'pmtiles://https://huggingface.co/datasets/bettergovph/project-noah-hazard-maps/resolve/main/PMTiles/noah_hazard_maps.pmtiles';
 
-const STATUS_COLORS = { safe: '#22C55E', warning: '#F59E0B', critical: '#EF4444', offline: '#6B7280' };
+export const STATUS_COLORS = { safe: '#22C55E', warning: '#F59E0B', critical: '#EF4444', offline: '#6B7280', unknown: '#6B7280' };
 
 // Hazard layers: id, label, NOAH source-layer, attribute, colors for level 1/2/3
 const NOAH_LAYERS = [
@@ -308,6 +308,7 @@ export function initTaguigMaps() {
         addHazardLayers(map, true);
         map._stationMarkers = {};
         el._maplibre_map = map;
+        import('./routePlanner').then(({ initRoutePlanner }) => initRoutePlanner(map));
         setTimeout(() => map.resize(), 300);
         return map;
     };

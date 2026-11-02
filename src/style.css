@@ -240,3 +240,21 @@ body { font-family: 'Poppins', sans-serif; background: #fff; overflow-x: hidden;
 .noah-legend { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: .7rem; }
 .noah-legend span { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
 .maplibregl-map { font-family: inherit; }
+
+/* ===== Flood-aware route planner ===== */
+.route-planner { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; font-size: .85rem; }
+.rp-field { display: flex; flex-wrap: wrap; gap: 6px; }
+.rp-field input { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid #E2E8F0; border-radius: 10px; font-family: inherit; }
+.route-planner button { padding: 8px 14px; border: 1px solid #BFDBFE; background: #EFF6FF; color: #1D4ED8; border-radius: 10px; cursor: pointer; font-family: inherit; font-weight: 600; }
+.rp-list { flex-basis: 100%; display: flex; flex-direction: column; gap: 4px; }
+.rp-list button { text-align: left; font-weight: 400; }
+.rp-actions { display: flex; gap: 8px; }
+.rp-actions [data-go] { background: #2563EB; color: #fff; border-color: #2563EB; }
+.rp-legend { display: flex; gap: 12px; font-size: .75rem; }
+.rp-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: middle; }
+.rp-sum { font-weight: 700; font-size: 1.05rem; }
+.rp-error, .rp-warn, .rp-info { padding: 8px 12px; border-radius: 8px; margin-top: 6px; }
+.rp-error { background: #FEE2E2; color: #991B1B; font-weight: 600; }
+.rp-warn { background: #FEF3C7; color: #92400E; }
+.rp-info { background: #F1F5F9; color: #334155; }
+.rp-steps { max-height: 220px; overflow-y: auto; margin: 8px 0 0 18px; }
