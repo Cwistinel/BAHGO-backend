@@ -9,7 +9,6 @@ function statusText(s) {
 }
 
 export function updateCounts() {
-    // shortcut: offline stations count by last known status, so a dead sensor keeps the Critical/Warning total up; add a stale-after-N-hours rule once sensors report reliably.
     const count = (st) => state.stations.filter(s => s.status === st || (s.status === 'offline' && s.lastKnownStatus === st)).length;
     const critical = count('critical');
     const warning = count('warning');

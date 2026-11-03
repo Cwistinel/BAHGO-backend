@@ -1,4 +1,3 @@
-// Keep in sync with functions/index.js (separate deploy package)
 const DEVICE_UTC_OFFSET_HOURS = 8;
 
 export function parseTimestamp(v) {

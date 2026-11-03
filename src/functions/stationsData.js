@@ -6,10 +6,6 @@ import { parseTimestamp } from './parseTimestamp';
 import { renderStations, renderTable, updateCounts } from './stationsRender';
 import { renderTaguigMaps, stationLocations, listenToStationLocations } from './palarMap';
 
-// Thresholds match the Arduino code (sensor mounted 35 in / 88.9 cm above the ground)
-//   distance > 44.45 cm  -> green  (safe)
-//   distance <= 44.45 cm -> blue   (warning)  = 44.45 cm of water
-//   distance <= 5.08 cm  -> red    (critical) = 83.82 cm of water
 const SENSOR_MOUNT_HEIGHT_CM = 88.9;
 const WARN_LEVEL_CM = 44.45;
 const CRIT_LEVEL_CM = 83.82;

@@ -48,7 +48,7 @@ export async function openStationModal(id) {
     canvas.style.display = 'block';
     const ctx = canvas.getContext('2d');
 
-    const riseRate = Math.max(s.rate, 0); // cm/hr from the model
+    const riseRate = Math.max(s.rate, 0);
 
     const predictData = [s.level];
     let projectedLevel = s.level;
@@ -81,11 +81,10 @@ export async function openStationModal(id) {
                     data: predictData,
                     borderColor: predictLineColor,
                     backgroundColor: predictBgColor,
-                    borderDash: [5, 5], // Matching the dashed look from image_cb7a20.png
+                    borderDash: [5, 5], 
                     fill: true,
                     tension: 0.4,
                     pointRadius: 6,
-                    // Matches the visual where 'Now' is a neutral dot and the rest follow prediction severity
                     pointBackgroundColor: predictData.map((val, idx) =>
                         idx === 0 ? '#9CA3AF' : (val >= 83.82 ? '#EF4444' : val >= 44.45 ? '#F59E0B' : '#22C55E')
                     ),

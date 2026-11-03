@@ -5,8 +5,6 @@ import { OFFLINE_AFTER_SEC } from './stationsData';
 import { buildZones, crossed, decodePolyline6, effectiveStatus, zonePolygon } from './routeLogic';
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
-// Valhalla is used because its request takes exclude_polygons: roads inside them are removed from the search.
-// The public FOSSGIS instance is for light use; point REACT_APP_VALHALLA_URL at your own instance for production.
 const VALHALLA = process.env.REACT_APP_VALHALLA_URL || 'https://valhalla1.openstreetmap.de';
 const SEARCH_BOX = '120.99,14.60,121.12,14.44'; // left,top,right,bottom around Taguig
 const LABEL = { safe: 'Safe', warning: 'Warning', critical: 'Critical', unknown: 'Unknown' };
@@ -18,7 +16,6 @@ async function geocode(q) {
     return (await res.json()).map(p => ({ name: p.display_name, lat: +p.lat, lng: +p.lon }));
 }
 
-// Resolves to null only when Valhalla says no path exists (error 442); any other failure throws.
 async function fetchRoute(from, to, exclude) {
     const req = {
         locations: [{ lat: from.lat, lon: from.lng }, { lat: to.lat, lon: to.lng }],
@@ -59,7 +56,6 @@ export function initRoutePlanner(map) {
         layers.forEach(l => map.addLayer({ ...l, id: `${id}-${l.type}`, source: id }));
     });
 
-    // ---- flood conditions on the map and for routing ----
     const snapshot = () => {
         const zones = buildZones(stationLocations, state.stations, OFFLINE_AFTER_SEC * 1000);
         const unlocated = state.stations.filter(s => !zones.some(z => z.id === s.id)).map(s => ({ ...s, status: effectiveStatus(s, OFFLINE_AFTER_SEC * 1000) }));
@@ -73,7 +69,6 @@ export function initRoutePlanner(map) {
         { type: 'line', paint: { 'line-color': ['get', 'color'], 'line-width': 2 } }
     ]);
 
-    // ---- planning ----
     const clearRoute = () => { routed = false; map.getSource('route')?.setData({ type: 'FeatureCollection', features: [] }); };
     const fail = (html) => { clearRoute(); out.innerHTML = `<div class="rp-error">${html}</div>`; };
 
@@ -82,11 +77,10 @@ export function initRoutePlanner(map) {
         const { zones, unlocated } = snapshot();
         if (!state.stations.length) return fail('Flood data has not loaded yet, so a route cannot be checked.');
         if (unlocated.some(s => s.status === 'critical')) return fail('A Critical station has no saved location, so its street cannot be avoided. No route is shown.');
-        clearRoute(); // never leave a previous route on screen while it is being rechecked
+        clearRoute();
         out.textContent = 'Calculating route…';
         const critical = zones.filter(z => z.status === 'critical');
         try {
-            // Without exclusions only to learn whether the normal route is blocked; with exclusions for the route actually shown.
             const [plain, route] = await Promise.all([critical.length ? fetchRoute(pts.from, pts.to, []) : null, fetchRoute(pts.from, pts.to, critical)]);
             if (id !== seq) return;
             if (!route) return fail('No accessible route is available between these points.');
@@ -116,7 +110,6 @@ export function initRoutePlanner(map) {
         }
     }
 
-    // ---- UI wiring ----
     const setPoint = (key, p) => {
         pts[key] = p;
         pins[key]?.remove();
@@ -155,8 +148,6 @@ export function initRoutePlanner(map) {
         clearRoute(); out.innerHTML = '';
     });
 
-    // Redraw zones and re-check the active route whenever any station's effective status or location changes
-    // (including a sensor going silent, which the Firebase listeners alone would not report).
     const tick = () => {
         const { zones, unlocated } = snapshot();
         const sig = [...zones, ...unlocated].map(z => `${z.id}:${z.status}:${z.lat},${z.lng}`).join('|') + state.stations.length;

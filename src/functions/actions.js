@@ -1,4 +1,3 @@
-// One click listener for every button that used to have an inline onclick.
 document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-action]');
     if (!el) return;

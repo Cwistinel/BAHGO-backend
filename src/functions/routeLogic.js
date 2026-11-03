@@ -1,12 +1,9 @@
 import { parseTimestamp } from './parseTimestamp';
 
-// Pure helpers for the flood-aware route planner (no DOM, no Firebase).
-// A sensor is a single point, so its "street segment" is modelled as every road within ZONE_RADIUS_M of it.
 export const ZONE_RADIUS_M = 50;
 const ZONE_SIDES = 16;
 const M_PER_DEG = 111320;
 
-// Valhalla returns route shapes as polyline6 -> [[lng, lat], ...]
 export function decodePolyline6(str) {
     const out = [];
     let i = 0, lat = 0, lng = 0;
@@ -19,7 +16,7 @@ export function decodePolyline6(str) {
     return out;
 }
 
-// Ring (unclosed, [lng, lat]) that fully contains the zone circle, so a router that avoids it also stays >= ZONE_RADIUS_M away.
+
 export function zonePolygon({ lat, lng }) {
     const R = ZONE_RADIUS_M / Math.cos(Math.PI / ZONE_SIDES);
     const kx = M_PER_DEG * Math.cos((lat * Math.PI) / 180);
@@ -29,7 +26,6 @@ export function zonePolygon({ lat, lng }) {
     });
 }
 
-// Shortest distance in metres from point [lng, lat] to a polyline.
 export function distToPathM(p, path) {
     const kx = M_PER_DEG * Math.cos((p[1] * Math.PI) / 180);
     const xy = path.map(([lng, lat]) => [(lng - p[0]) * kx, (lat - p[1]) * M_PER_DEG]);
@@ -43,11 +39,8 @@ export function distToPathM(p, path) {
     return best;
 }
 
-// Zones whose area the route touches. Used both to detect blocked routes and to validate the router's answer.
 export const crossed = (path, zones) => zones.filter(z => distToPathM([z.lng, z.lat], path) < ZONE_RADIUS_M);
 
-// safe | warning | critical | unknown. Offline/silent sensors are never assumed safe:
-// they stay critical if last known critical, otherwise unknown.
 export function effectiveStatus(station, staleMs, now = Date.now()) {
     if (!station) return 'unknown';
     const offline = station.status === 'offline' || !(now - parseTimestamp(station.timestamp) <= staleMs);
@@ -55,7 +48,6 @@ export function effectiveStatus(station, staleMs, now = Date.now()) {
     return station.lastKnownStatus === 'critical' ? 'critical' : 'unknown';
 }
 
-// One zone per saved station location. A saved location with no live station data is unknown.
 export const buildZones = (locations, stations, staleMs, now) => Object.entries(locations)
     .filter(([, l]) => Number.isFinite(l.lat) && Number.isFinite(l.lng))
     .map(([id, l]) => ({ id, name: l.name || id, lat: l.lat, lng: l.lng, status: effectiveStatus(stations.find(s => s.id === id), staleMs, now) }));

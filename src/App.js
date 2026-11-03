@@ -7,7 +7,6 @@ function App() {
     if (typeof window.initBahgoApp === 'function') {
       window.initBahgoApp();
     }
-        // ---- MapLibre + PMTiles (NOAH hazard) loader ----
     if (!document.getElementById('maplibre-css')) {
       const link = document.createElement('link');
       link.id = 'maplibre-css';

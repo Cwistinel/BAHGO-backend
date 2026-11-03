@@ -3,7 +3,6 @@ import { esc } from './escape';
 import { doc, setDoc, collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
-// Shared (Firestore-backed) station locations: { sensordata1: {lat, lng, name, updatedAt}, ... }
 export const stationLocations = {};
 
 export function listenToStationLocations() {
@@ -26,12 +25,10 @@ export function listenToStationLocations() {
 
 export const getPalarBarangay = (name) => (name.toLowerCase().includes('palar') ? 'Palar' : 'Western Bicutan');
 
-// ================= MAPLIBRE + NOAH HAZARD HELPERS =================
 const NOAH_PMTILES_URL = 'pmtiles://https://huggingface.co/datasets/bettergovph/project-noah-hazard-maps/resolve/main/PMTiles/noah_hazard_maps.pmtiles';
 
 export const STATUS_COLORS = { safe: '#22C55E', warning: '#F59E0B', critical: '#EF4444', offline: '#6B7280', unknown: '#6B7280' };
 
-// Hazard layers: id, label, NOAH source-layer, attribute, colors for level 1/2/3
 const NOAH_LAYERS = [
     { id: 'noah-flood-5yr', label: 'Flood 5-year', layer: 'flood_5yr', attr: 'Var', colors: ['#bfdbfe', '#60a5fa', '#1d4ed8'], visible: true }
 ];
@@ -67,7 +64,7 @@ export function createMap(elementId, lat, lng, zoom) {
     const map = new window.maplibregl.Map({
         container: elementId,
         style: baseStyle(),
-        center: [lng, lat],      // MapLibre uses [lng, lat]
+        center: [lng, lat],
         zoom: zoom,
         maxZoom: 19,
         attributionControl: { compact: true }
@@ -279,7 +276,6 @@ export async function savePalarLocation(stationId) {
         return;
     }
     try {
-        // Saved to Firestore -> every logged-in super user/admin receives it live via onSnapshot
         await setDoc(doc(db, 'station_locations', stationId), {
             lat: newLat,
             lng: newLng,
@@ -361,7 +357,7 @@ export function initTaguigMaps() {
             });
             Object.keys(map._stationMarkers).filter(id => !seen.has(id)).forEach(id => { map._stationMarkers[id].remove(); delete map._stationMarkers[id]; });
             mapLocations.set(map, locations);
-            // Re-fit when station coords change (fallback -> Firestore, or an edited location), not on every status tick.
+            
             const fitKey = locations.map(l => l.join(',')).join('|');
             if (fitKey !== map._fitKey && locations.length && map.getContainer().getClientRects().length > 0) { fitMapToLocations(map); map._fitKey = fitKey; }
         });
