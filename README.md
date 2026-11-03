@@ -144,6 +144,7 @@ choose alert-email recipients, so keep it in sync. An account with no
 | Check interval | 1 minute |
 | Warning cooldown | 30 minutes |
 | Offline reminder | every 6 hours |
+| Offline email | sent 2 minutes after the first station is detected offline, so stations that drop out together share one email |
 | Critical alerts | sent immediately, no cooldown |
 
 Emails go to every user whose `users.role` is `Admin` or `Super User`. A recovery

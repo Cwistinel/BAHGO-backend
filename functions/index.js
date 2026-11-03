@@ -4,6 +4,7 @@ const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 const { decide } = require('./decide');
+const { buildEmails } = require('./emails');
 admin.initializeApp();
 
 const OPTS = { region: 'us-central1', maxInstances: 5 };
@@ -69,8 +70,7 @@ exports.checkStations = onSchedule(
     const db = admin.firestore();
     const data = (await admin.database().ref('/').orderByKey().startAt('Sensordata').endAt('Sensordata\uf8ff').get()).val() || {};
     const now = Date.now();
-    const events = [];
-    const saves = [];
+    const results = [];
 
     const locs = Object.fromEntries((await db.collection('station_locations').get()).docs.map((d) => [d.id, d.data()]));
 
@@ -78,9 +78,15 @@ exports.checkStations = onSchedule(
       if (!/^sensordata\d+$/i.test(key) || !s || typeof s !== 'object') continue;
       const name = (locs[key] && locs[key].name) || NAMES[key.toLowerCase()] || key;
       const ref = db.doc('alert_state/' + key);
-      const { events: ev, next } = decide((await ref.get()).data() || {}, s, now, name);
-      events.push(...ev);
-      if (Object.keys(next).length > 0) saves.push({ ref, next });
+      results.push({ ref, ...decide((await ref.get()).data() || {}, s, now, name) });
+    }
+
+    const events = results.flatMap((r) => r.events);
+    if (results.some((r) => r.offlineDue)) {
+      for (const r of results.filter((x) => x.offline)) {
+        events.push({ type: 'offline', ...r.offline });
+        Object.assign(r.next, { offline: true, lastOfflineEmail: now, offlineDetectedAt: 0 });
+      }
     }
 
     if (events.length > 0) {
@@ -95,14 +101,13 @@ exports.checkStations = onSchedule(
         service: 'gmail',
         auth: { user: SMTP_USER.value(), pass: SMTP_PASS.value() }
       });
-      await transporter.sendMail({
+      await Promise.all(buildEmails(events, now, results.length).map((email) => transporter.sendMail({
         from: 'BAHGO Flood Monitoring <' + SMTP_USER.value() + '>',
         bcc: to,
-        subject: events.length === 1 ? events[0].subject : 'BAHGO alerts: ' + events.length + ' updates',
-        text: ['BAHGO flood monitoring', '', ...events.map((e) => '- ' + e.line), '', 'Open the BAHGO dashboard for details.'].join('\n')
-      });
+        ...email
+      })));
     }
 
-    await Promise.all(saves.map((x) => x.ref.set(x.next, { merge: true })));
+    await Promise.all(results.filter((r) => Object.keys(r.next).length > 0).map((r) => r.ref.set(r.next, { merge: true })));
   }
 );

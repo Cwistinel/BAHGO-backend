@@ -5,6 +5,7 @@ const OFFLINE_AFTER_SEC = 150;
 const COOLDOWN_MS = 30 * 60 * 1000;
 const OFFLINE_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 const DEVICE_UTC_OFFSET_HOURS = 8;
+const OFFLINE_WAIT_MS = 2 * 60 * 1000;
 
 function parseTimestamp(v) {
   if (v === null || v === undefined) return null;
@@ -40,21 +41,22 @@ function decide(st, s, now, name) {
   const next = {};
   const ts = parseTimestamp(s.Last_Updated);
   if (ts === null) return { events, next };
-  const ageSec = (now - ts) / 1000;
-  const offline = ageSec > OFFLINE_AFTER_SEC;
+  const offline = (now - ts) / 1000 > OFFLINE_AFTER_SEC;
+  let offlineDue = false;
 
   if (offline) {
-    if (!st.offline || now - (st.lastOfflineEmail || 0) > OFFLINE_COOLDOWN_MS) {
-      events.push({
-        subject: 'URGENT: ' + name + ' is Offline!',
-        line: name + ' has stopped reporting (last update about ' + (ageSec < 7200 ? Math.round(ageSec / 60) + ' minute(s)' : ageSec < 172800 ? Math.round(ageSec / 3600) + ' hour(s)' : Math.round(ageSec / 86400) + ' day(s)') + ' ago).'
-      });
-      next.offline = true;
-      next.lastOfflineEmail = now;
+    if (!st.offline && !st.offlineDetectedAt) {
+      next.offlineDetectedAt = now;
+      next.offlineSince = ts;
+    } else {
+      offlineDue = st.offline ? now - (st.lastOfflineEmail || 0) > OFFLINE_COOLDOWN_MS : now - st.offlineDetectedAt >= OFFLINE_WAIT_MS;
     }
   } else if (st.offline) {
+    events.push({ type: 'back', name, since: ts, offlineMs: st.offlineSince ? ts - st.offlineSince : null });
     next.offline = false;
-    events.push({ subject: 'Back Online: ' + name, line: name + ' is reporting data again.' });
+    next.offlineDetectedAt = 0;
+  } else if (st.offlineDetectedAt) {
+    next.offlineDetectedAt = 0;
   }
 
   if (!offline && s.Distance_cm !== undefined && s.Distance_cm !== null) {
@@ -64,17 +66,13 @@ function decide(st, s, now, name) {
       if (prev !== 'safe') next.floodStatus = 'safe';
     } else if (f.status !== prev) {
       if (f.status === 'critical' || now - (st.lastFloodEmail || 0) > COOLDOWN_MS) {
-        const crit = f.status === 'critical';
-        events.push({
-          subject: crit ? 'CRITICAL ALERT: ' + name + ' Water Levels High!' : 'WARNING: ' + name + ' Water Levels Rising',
-          line: name + ' (' + f.status.toUpperCase() + '): water level ' + f.level + ' cm, precipitation ' + f.precip + ' mm/hr.'
-        });
+        events.push({ type: f.status, name, level: f.level, precip: f.precip });
         next.floodStatus = f.status;
         next.lastFloodEmail = now;
       }
     }
   }
-  return { events, next };
+  return { events, next, offline: offline ? { name, lastReading: ts } : null, offlineDue };
 }
 
-module.exports = { parseTimestamp, decide, OFFLINE_COOLDOWN_MS };
+module.exports = { parseTimestamp, decide, OFFLINE_COOLDOWN_MS, OFFLINE_WAIT_MS };
