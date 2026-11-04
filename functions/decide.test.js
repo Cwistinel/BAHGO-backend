@@ -48,4 +48,6 @@ test('decide: back-online event carries the reading time and outage length', () 
 test('decide: offline station is reported for the combined email; online station is not', () => {
   assert.deepStrictEqual(decide({}, stale, NOW, 'X').offline, { name: 'X', lastReading: staleTs });
   assert.strictEqual(decide({}, fresh, NOW, 'X').offline, null);
+  assert.strictEqual(decide({ offline: true, lastOfflineEmail: NOW - 1000 }, stale, NOW, 'X').offline, null);
+  assert.deepStrictEqual(decide({ offline: true, lastOfflineEmail: NOW - OFFLINE_COOLDOWN_MS - 1 }, stale, NOW, 'X').offline, { name: 'X', lastReading: staleTs });
 });

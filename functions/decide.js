@@ -72,7 +72,7 @@ function decide(st, s, now, name) {
       }
     }
   }
-  return { events, next, offline: offline ? { name, lastReading: ts } : null, offlineDue };
+  return { events, next, offline: offline && (!st.offline || offlineDue) ? { name, lastReading: ts } : null, offlineDue };
 }
 
-module.exports = { parseTimestamp, decide, OFFLINE_COOLDOWN_MS, OFFLINE_WAIT_MS };
+module.exports = { parseTimestamp, floodInfo, decide, OFFLINE_COOLDOWN_MS, OFFLINE_WAIT_MS };

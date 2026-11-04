@@ -3,7 +3,7 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
-const { decide } = require('./decide');
+const { decide, parseTimestamp, floodInfo } = require('./decide');
 const { buildEmails } = require('./emails');
 admin.initializeApp();
 
@@ -71,6 +71,7 @@ exports.checkStations = onSchedule(
     const data = (await admin.database().ref('/').orderByKey().startAt('Sensordata').endAt('Sensordata\uf8ff').get()).val() || {};
     const now = Date.now();
     const results = [];
+    const history = [];
 
     const locs = Object.fromEntries((await db.collection('station_locations').get()).docs.map((d) => [d.id, d.data()]));
 
@@ -79,7 +80,17 @@ exports.checkStations = onSchedule(
       const name = (locs[key] && locs[key].name) || NAMES[key.toLowerCase()] || key;
       const ref = db.doc('alert_state/' + key);
       results.push({ ref, ...decide((await ref.get()).data() || {}, s, now, name) });
+      const ts = parseTimestamp(s.Last_Updated);
+      if (ts !== null) {
+        const id = key + '_' + new Date(ts + 8 * 3600 * 1000).toISOString().slice(0, 19).replace('T', '_'); // e.g. Sensordata1_2026-11-04_23:39:31 (Manila time)
+        history.push(db.doc('readings/' + id).set({
+          station: key, ts, Last_Updated: s.Last_Updated,
+          Distance_cm: s.Distance_cm ?? null, Rain_Value: s.Rain_Value ?? null, Rain_Status: s.Rain_Status ?? null,
+          level: s.Distance_cm == null ? null : floodInfo(s).level
+        }));
+      }
     }
+    await Promise.all(history).catch((e) => console.error('Saving readings failed:', e));
 
     const events = results.flatMap((r) => r.events);
     if (results.some((r) => r.offlineDue)) {

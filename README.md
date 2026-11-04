@@ -192,6 +192,7 @@ email is sent when a station comes back online.
 | `users/{uid}` | Profile, role, first-login flag |
 | `station_locations/{stationId}` | Latitude, longitude, and display name |
 | `alert_state/{stationId}` | Last alert state (written by the function only) |
+| `readings/{stationId}_{date}_{time}` | One reading per station per minute, saved by `checkStations` for model training, e.g. `Sensordata1_2026-11-04_23:39:31` (Manila time of `Last_Updated`). An offline sensor's stale reading overwrites the same document. Clients cannot read or write it; export with the Admin SDK |
 
 | Realtime Database path | Purpose |
 |---|---|
