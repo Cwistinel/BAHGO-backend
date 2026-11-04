@@ -118,9 +118,43 @@ project.
 
 ## Realtime Database rules
 
-This repo does not deploy RTDB rules. The dashboard and the alert function read only
-`Sensordata1..4`, so signed-in users need read on those four nodes (not the
-root); devices need write to them.
+`firebase.json` deploys `database.rules.json` with `firebase deploy` (or
+`firebase deploy --only database`). Only `Sensordata1..4` are readable or
+writable; every other path is denied.
+
+- Read: accounts with the `admin` or `super` claim. The alert function uses the
+  Admin SDK, which bypasses rules.
+- Write: the sensor account with the `device` claim. During the rollout below the
+  rule also allows anonymous accounts so unflashed sensors keep working; the final
+  rule is:
+
+  ```json
+  ".write": "$node.matches(/^Sensordata[1-4]$/) && auth.token.role === 'device'"
+  ```
+
+### Sensor account
+
+All four ESP32s share one email/password account with the custom claim
+`role: device`. It has no `users/{uid}` document, so `setRoles.js` skips it and
+the dashboard signs it out.
+
+1. In Authentication → Users, add a user with an email and a strong password.
+   Do not use **User Management** in the dashboard; that creates an admin.
+2. Set the claim:
+
+   ```sh
+   GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json \
+     node functions/scripts/setDeviceRole.js sensors@example.com
+   ```
+
+3. Put the email and password in the firmware as `DEVICE_EMAIL` and
+   `DEVICE_PASSWORD`. Keep them out of this repo.
+4. Deploy the rules (`firebase deploy --only database`), reflash each sensor,
+   and confirm its `Last_Updated` keeps changing.
+5. Once all four are reflashed, deploy the final write rule above and disable
+   the Anonymous provider in Authentication → Sign-in method.
+
+To rotate the password, change it in the console and reflash all four sensors.
 
 ## Roles
 
@@ -128,6 +162,7 @@ root); devices need write to them.
 |---|---|---|
 | `super` | `Super User` | Full dashboard, manage admins, edit station locations |
 | `admin` | `Admin` | Read-only dashboard |
+| `device` | none | Write `Sensordata1..4` only (shared sensor account) |
 
 Firestore rules check the custom claim. The `users.role` field is also used to
 choose alert-email recipients, so keep it in sync. An account with no
