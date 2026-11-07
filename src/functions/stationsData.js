@@ -6,9 +6,10 @@ import { parseTimestamp } from './parseTimestamp';
 import { renderStations, renderTable, updateCounts } from './stationsRender';
 import { renderTaguigMaps, stationLocations, listenToStationLocations } from './palarMap';
 
-const SENSOR_MOUNT_HEIGHT_CM = 88.9;
-const WARN_LEVEL_CM = 44.45;
-const CRIT_LEVEL_CM = 83.82;
+// MMDA flood gauge, sensor mounted 37" above the road surface.
+export const SENSOR_MOUNT_HEIGHT_CM = 93.98;  // 37"
+export const WARN_LEVEL_CM = 33.02;           // 13" Half Tire -> NPLV
+export const CRIT_LEVEL_CM = 66.04;           // 26" Tire -> NPATV
 export const OFFLINE_AFTER_SEC = 150;
 const ML_SCALE = 7.62 / SENSOR_MOUNT_HEIGHT_CM;
 
@@ -73,7 +74,8 @@ export function loadStations() {
                 } else if (actualWaterLevelCm >= WARN_LEVEL_CM || rawRain <= 2200) {
                 levelStatus = 'warning';
                 }
-const status = secondsSinceUpdate > OFFLINE_AFTER_SEC ? 'offline' : levelStatus;
+                const sensorError = s.Reading_Status === 'error';
+                const status = secondsSinceUpdate > OFFLINE_AFTER_SEC || sensorError ? 'offline' : levelStatus;
                 const baseNames = {
                     'sensordata1': 'Sealion Street',
                     'sensordata2': 'Samaritan Street',
@@ -89,6 +91,7 @@ const status = secondsSinceUpdate > OFFLINE_AFTER_SEC ? 'offline' : levelStatus;
                     rate: rate,
                     status: status,
                     lastKnownStatus: levelStatus,
+                    sensorError: sensorError,
                     timestamp: finalTimestamp
                 };
             });

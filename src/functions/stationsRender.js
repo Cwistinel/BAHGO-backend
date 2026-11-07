@@ -3,7 +3,7 @@ import { esc } from './escape';
 import { getPalarBarangay } from './palarMap';
 
 function statusText(s) {
-    const base = s.status.toUpperCase();
+    const base = s.sensorError ? 'SENSOR ERROR' : s.status.toUpperCase();
     if (s.status !== 'offline') return base;
     return base + ' - LAST KNOWN: ' + (s.lastKnownStatus || 'safe').toUpperCase();
 }

@@ -1,4 +1,5 @@
 import { state } from '../state';
+import { SENSOR_MOUNT_HEIGHT_CM, WARN_LEVEL_CM, CRIT_LEVEL_CM } from './stationsData';
 
 export async function openStationModal(id) {
     const s = state.stations.find(st => st.id === id);
@@ -9,14 +10,20 @@ export async function openStationModal(id) {
             <div class="s-row"><span>Current Water Level:</span><span class="val">${s.level} cm</span></div>
             <div class="s-row"><span>Precipitation:</span><span class="val">${s.precip} mm/hr</span></div>
             <div class="s-row"><span>Rise Rate:</span><span class="val">${s.rate} cm/hr</span></div>
-            <div class="s-row"><span>Current Status:</span><span class="val">${s.status.toUpperCase()}</span></div>
+            <div class="s-row"><span>Current Status:</span><span class="val">${s.sensorError ? 'SENSOR ERROR' : s.status.toUpperCase()}</span></div>
             ${s.status === 'offline' ? `<div class="s-row"><span>Last Known Status:</span><span class="val">${(s.lastKnownStatus || 'safe').toUpperCase()}</span></div>` : ''}
             <div class="s-row"><span>Last Updated:</span><span class="val">${new Date(s.timestamp).toLocaleString()}</span></div>
         </div>
         <p style="margin-top: 20px; font-weight: 600; color: var(--text-muted);">1-Hour Predicted Trend (model estimate)</p>
     `;
 
-    if (s.status === 'offline') {
+    if (s.sensorError) {
+        modalHtml += `
+        <div style="text-align:center; padding: 30px; background: #f9fafb; border-radius: 8px; margin-top: 10px; border: 1px dashed #d1d5db;">
+            <p style="color: #6b7280; font-weight: 600; margin-bottom: 5px;">⚠️ Sensor Error</p>
+            <p style="color: #9ca3af; font-size: 0.9rem;">The device is online but the water sensor has not returned a reading for over a minute. Check the sensor.</p>
+        </div>`;
+    } else if (s.status === 'offline') {
         modalHtml += `
         <div style="text-align:center; padding: 30px; background: #f9fafb; border-radius: 8px; margin-top: 10px; border: 1px dashed #d1d5db;">
             <p style="color: #6b7280; font-weight: 600; margin-bottom: 5px;">⚠️ Device Offline</p>
@@ -53,7 +60,7 @@ export async function openStationModal(id) {
     const predictData = [s.level];
     let projectedLevel = s.level;
     for (let i = 10; i <= 60; i += 10) {
-        projectedLevel += (riseRate / 6);
+        projectedLevel = Math.min(projectedLevel + riseRate / 6, SENSOR_MOUNT_HEIGHT_CM);
         predictData.push(Math.round(projectedLevel * 100) / 100);
     }
 
@@ -63,10 +70,10 @@ export async function openStationModal(id) {
     let predictLineColor = '#22C55E';
     let predictBgColor = 'rgba(34, 197, 94, 0.1)';
 
-    if (maxPredicted >= 83.82) {
+    if (maxPredicted >= CRIT_LEVEL_CM) {
         predictLineColor = '#EF4444';
         predictBgColor = 'rgba(239, 68, 68, 0.1)';
-    } else if (maxPredicted >= 44.45) {
+    } else if (maxPredicted >= WARN_LEVEL_CM) {
         predictLineColor = '#F59E0B';
         predictBgColor = 'rgba(245, 158, 11, 0.1)';
     }
@@ -86,7 +93,7 @@ export async function openStationModal(id) {
                     tension: 0.4,
                     pointRadius: 6,
                     pointBackgroundColor: predictData.map((val, idx) =>
-                        idx === 0 ? '#9CA3AF' : (val >= 83.82 ? '#EF4444' : val >= 44.45 ? '#F59E0B' : '#22C55E')
+                        idx === 0 ? '#9CA3AF' : (val >= CRIT_LEVEL_CM ? '#EF4444' : val >= WARN_LEVEL_CM ? '#F59E0B' : '#22C55E')
                     ),
                     pointBorderColor: '#fff',
                     borderWidth: 3
