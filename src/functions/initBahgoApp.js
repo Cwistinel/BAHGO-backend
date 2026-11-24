@@ -14,6 +14,26 @@ import { signOut, updatePassword } from 'firebase/auth';
 import { friendlyAuthError } from './authMessages';
 import { initAvatar, applyAvatar } from './avatar';
 
+/**
+ * Reads the logged-in user's profile from the server, so the name and photo are the saved ones.
+ * Right after a page load Firestore may not be connected yet, so it retries for about 10 seconds.
+ * If the server still can't be reached it throws ("Could not verify your account"); it never
+ * reports "deleted" from an empty local copy.
+ */
+async function readProfile(ref) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+            return await getDocFromServer(ref);
+        } catch (err) {
+            if (err.code !== 'unavailable') throw err;
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+    }
+    const snap = await getDoc(ref);
+    if (!snap.exists() && snap.metadata.fromCache) throw new Error('Could not reach the server to check the account.');
+    return snap;
+}
+
 export function initBahgoApp() {
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
@@ -177,10 +197,7 @@ export function initBahgoApp() {
                
                 let userDocSnap;
                 try {
-                    // Read the profile from the server so the name and photo are the saved ones;
-                    // fall back to the local copy only if the server can't be reached.
-                    const userRef = doc(db, 'users', user.uid);
-                    userDocSnap = await getDocFromServer(userRef).catch(() => getDoc(userRef));
+                    userDocSnap = await readProfile(doc(db, 'users', user.uid));
                     if (!userDocSnap.exists()) {
                         await signOut(auth);
                         document.getElementById('dashboardScreen')?.classList.remove('active');
