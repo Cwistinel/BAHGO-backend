@@ -1,5 +1,6 @@
 import { state } from '../state';
 import { SENSOR_MOUNT_HEIGHT_CM, WARN_LEVEL_CM, CRIT_LEVEL_CM } from './stationsData';
+import { forecastRows } from './stationsRender';
 
 export async function openStationModal(id) {
     const s = state.stations.find(st => st.id === id);
@@ -10,6 +11,7 @@ export async function openStationModal(id) {
             <div class="s-row"><span>Current Water Level:</span><span class="val">${s.level} cm</span></div>
             <div class="s-row"><span>Precipitation:</span><span class="val">${s.precip} mm/hr</span></div>
             <div class="s-row"><span>Rise Rate:</span><span class="val">${s.rate} cm/hr</span></div>
+${forecastRows(s)}
             <div class="s-row"><span>Current Status:</span><span class="val">${s.sensorError ? 'SENSOR ERROR' : s.status.toUpperCase()}</span></div>
             ${s.status === 'offline' ? `<div class="s-row"><span>Last Known Status:</span><span class="val">${(s.lastKnownStatus || 'safe').toUpperCase()}</span></div>` : ''}
             <div class="s-row"><span>Last Updated:</span><span class="val">${new Date(s.timestamp).toLocaleString()}</span></div>

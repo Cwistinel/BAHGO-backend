@@ -5,6 +5,7 @@ import { showToast } from './notifications';
 import { parseTimestamp } from './parseTimestamp';
 import { renderStations, renderTable, updateCounts } from './stationsRender';
 import { renderTaguigMaps, stationLocations, listenToStationLocations } from './palarMap';
+import { recordReading, forecastLevel, riskScore, scoreStatus } from './floodModel';
 
 // Same as the BahGo app (SensorTracker.kt): 37" mount, Warning above 30 cm, Critical above 60 cm.
 export const SENSOR_MOUNT_HEIGHT_CM = 94;
@@ -78,6 +79,13 @@ export function loadStations() {
                 }
                 const sensorError = s.Reading_Status === 'error';
                 const status = secondsSinceUpdate > OFFLINE_AFTER_SEC || sensorError ? 'offline' : levelStatus;
+                // The app's models: keep the reading, then forecast 30 minutes ahead while online.
+                if (distanceCm > 0) {
+                    const rain = s.Rain_Value == null ? NaN : Math.min(1, Math.max(0, (4095 - Number(s.Rain_Value)) / 4095));
+                    recordReading(key, Number.isFinite(lastUpdateMs) ? lastUpdateMs : now, actualWaterLevelCm, rain);
+                }
+                const forecastCm = status === 'offline' ? null : forecastLevel(key);
+                const score = status === 'offline' ? null : riskScore(key);
                 const baseNames = {
                     'sensordata1': 'Sealion Street',
                     'sensordata2': 'Samaritan Street',
@@ -94,6 +102,9 @@ export function loadStations() {
                     status: status,
                     lastKnownStatus: levelStatus,
                     sensorError: sensorError,
+                    forecastCm: forecastCm === null ? null : Math.round(forecastCm * 10) / 10,
+                    forecastStatus: forecastCm === null ? null : forecastCm > CRIT_LEVEL_CM ? 'critical' : forecastCm > WARN_LEVEL_CM ? 'warning' : 'safe',
+                    riskStatus: score === null ? null : scoreStatus(score),
                     timestamp: finalTimestamp
                 };
             });

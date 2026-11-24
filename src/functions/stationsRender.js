@@ -8,6 +8,18 @@ function statusText(s) {
     return base + ' - LAST KNOWN: ' + (s.lastKnownStatus || 'safe').toUpperCase();
 }
 
+const RISK_WORD = { safe: 'Low', warning: 'Warning', critical: 'Critical' };
+
+/** The app's forecast rows: water level in 30 min (Linear) and flood risk (Lasso). */
+export function forecastRows(s) {
+    const waiting = s.status === 'offline' ? '--' : 'Getting ready…';
+    const level = s.forecastCm === null || s.forecastCm === undefined ? waiting : `${s.forecastCm} cm · ${s.forecastStatus.toUpperCase()}`;
+    const risk = s.riskStatus ? RISK_WORD[s.riskStatus] : waiting;
+    return `
+                <div class="s-row"><span>Level in 30 min:</span><span class="val">${level}</span></div>
+                <div class="s-row"><span>Flood Risk:</span><span class="val">${risk}</span></div>`;
+}
+
 export function updateCounts() {
     const count = (st) => state.stations.filter(s => s.status === st || (s.status === 'offline' && s.lastKnownStatus === st)).length;
     const critical = count('critical');
@@ -48,7 +60,7 @@ export function renderStations() {
             <div class="s-stats">
                 <div class="s-row"><span>Water Level:</span><span class="val">${s.level} cm</span></div>
                 <div class="s-row"><span>Precipitation:</span><span class="val">${s.precip} mm/hr</span></div>
-                <div class="s-row"><span>Rise Rate:</span><span class="val">${s.rate} cm/hr</span></div>
+                <div class="s-row"><span>Rise Rate:</span><span class="val">${s.rate} cm/hr</span></div>${forecastRows(s)}
             </div>
             <div class="s-label ${s.status}">${statusText(s)}</div>
         </div>
