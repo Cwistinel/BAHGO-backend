@@ -6,11 +6,11 @@ import { parseTimestamp } from './parseTimestamp';
 import { renderStations, renderTable, updateCounts } from './stationsRender';
 import { renderTaguigMaps, stationLocations, listenToStationLocations } from './palarMap';
 
-// MMDA flood gauge, sensor mounted 37" above the road surface.
-export const SENSOR_MOUNT_HEIGHT_CM = 93.98;  // 37"
-export const WARN_LEVEL_CM = 33.02;           // 13" Half Tire -> NPLV
-export const CRIT_LEVEL_CM = 66.04;           // 26" Tire -> NPATV
-export const OFFLINE_AFTER_SEC = 150;
+// Same as the BahGo app (SensorTracker.kt): 37" mount, Warning above 30 cm, Critical above 60 cm.
+export const SENSOR_MOUNT_HEIGHT_CM = 94;
+export const WARN_LEVEL_CM = 30;
+export const CRIT_LEVEL_CM = 60;
+export const OFFLINE_AFTER_SEC = 120;
 const ML_SCALE = 7.62 / SENSOR_MOUNT_HEIGHT_CM;
 
 const ML_INTERCEPT = 0.4853274789608488;
@@ -55,23 +55,25 @@ export function loadStations() {
         const data = raw;
         if (Object.keys(data).length) {
             const newStations = Object.entries(data).sort(([a], [b]) => a.localeCompare(b)).map(([key, s]) => {
-                const distanceCm = s.Distance_cm ?? SENSOR_MOUNT_HEIGHT_CM;
+                const existingStation = state.stations.find(old => old.id === key);
+                const distanceCm = Number(s.Distance_cm);
                 const rawRain = s.Rain_Value ?? 4095;
                 const rainRatio = (4095 - rawRain) / 4095;
                 let precip = Math.pow(rainRatio, 2) * 15;
                 precip = Math.round(precip * 10) / 10;
-                let actualWaterLevelCm = SENSOR_MOUNT_HEIGHT_CM - distanceCm;
-                if (actualWaterLevelCm < 0) actualWaterLevelCm = 0;
+                // Distance 0, negative or missing is not a real reading (invalid echo): keep the last level shown.
+                const actualWaterLevelCm = distanceCm > 0
+                    ? Math.max(0, SENSOR_MOUNT_HEIGHT_CM - distanceCm)
+                    : (existingStation ? existingStation.level : 0);
                 const rate = Math.round((calculateRiseRate(actualWaterLevelCm * ML_SCALE, precip) / ML_SCALE) * 100) / 100;
-                const existingStation = state.stations.find(old => old.id === key);
                 const finalTimestamp = s.Last_Updated || (existingStation ? existingStation.timestamp : new Date().toISOString());
                 const now = Date.now();
                 const lastUpdateMs = parseTimestamp(finalTimestamp);
                 const secondsSinceUpdate = (now - lastUpdateMs) / 1000;
                 let levelStatus = 'safe';
-                if (actualWaterLevelCm >= CRIT_LEVEL_CM || rawRain <= 1200) {
+                if (actualWaterLevelCm > CRIT_LEVEL_CM) {
                 levelStatus = 'critical';
-                } else if (actualWaterLevelCm >= WARN_LEVEL_CM || rawRain <= 2200) {
+                } else if (actualWaterLevelCm > WARN_LEVEL_CM) {
                 levelStatus = 'warning';
                 }
                 const sensorError = s.Reading_Status === 'error';

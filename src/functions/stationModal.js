@@ -70,10 +70,10 @@ export async function openStationModal(id) {
     let predictLineColor = '#22C55E';
     let predictBgColor = 'rgba(34, 197, 94, 0.1)';
 
-    if (maxPredicted >= CRIT_LEVEL_CM) {
+    if (maxPredicted > CRIT_LEVEL_CM) {
         predictLineColor = '#EF4444';
         predictBgColor = 'rgba(239, 68, 68, 0.1)';
-    } else if (maxPredicted >= WARN_LEVEL_CM) {
+    } else if (maxPredicted > WARN_LEVEL_CM) {
         predictLineColor = '#F59E0B';
         predictBgColor = 'rgba(245, 158, 11, 0.1)';
     }
@@ -93,7 +93,7 @@ export async function openStationModal(id) {
                     tension: 0.4,
                     pointRadius: 6,
                     pointBackgroundColor: predictData.map((val, idx) =>
-                        idx === 0 ? '#9CA3AF' : (val >= CRIT_LEVEL_CM ? '#EF4444' : val >= WARN_LEVEL_CM ? '#F59E0B' : '#22C55E')
+                        idx === 0 ? '#9CA3AF' : (val > CRIT_LEVEL_CM ? '#EF4444' : val > WARN_LEVEL_CM ? '#F59E0B' : '#22C55E')
                     ),
                     pointBorderColor: '#fff',
                     borderWidth: 3

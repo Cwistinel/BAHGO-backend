@@ -1,7 +1,8 @@
-const SENSOR_HEIGHT_CM = 88.9;
-const WARN_LEVEL_CM = 44.45;
-const CRIT_LEVEL_CM = 83.82;
-const OFFLINE_AFTER_SEC = 150;
+// Same as the BahGo app (SensorTracker.kt): 37" mount, Warning above 30 cm, Critical above 60 cm.
+const SENSOR_HEIGHT_CM = 94;
+const WARN_LEVEL_CM = 30;
+const CRIT_LEVEL_CM = 60;
+const OFFLINE_AFTER_SEC = 120;
 const COOLDOWN_MS = 30 * 60 * 1000;
 const OFFLINE_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 const DEVICE_UTC_OFFSET_HOURS = 8;
@@ -31,8 +32,8 @@ function floodInfo(s) {
   if (level < 0) level = 0;
   level = Math.round(level * 100) / 100;
   let status = 'safe';
-  if (level >= CRIT_LEVEL_CM || rawRain <= 1200) status = 'critical';
-  else if (level >= WARN_LEVEL_CM || rawRain <= 2200) status = 'warning';
+  if (level > CRIT_LEVEL_CM) status = 'critical';
+  else if (level > WARN_LEVEL_CM) status = 'warning';
   return { status, level, precip };
 }
 
@@ -59,7 +60,7 @@ function decide(st, s, now, name) {
     next.offlineDetectedAt = 0;
   }
 
-  if (!offline && s.Distance_cm !== undefined && s.Distance_cm !== null) {
+  if (!offline && Number(s.Distance_cm) > 0) {
     const f = floodInfo(s);
     const prev = st.floodStatus || 'safe';
     if (f.status === 'safe') {

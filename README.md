@@ -172,10 +172,10 @@ choose alert-email recipients, so keep it in sync. An account with no
 
 | Rule | Value |
 |---|---|
-| Sensor mounted above ground | 88.9 cm |
-| Warning | water ≥ 44.45 cm or raw rain ≤ 2200 |
-| Critical | water ≥ 83.82 cm or raw rain ≤ 1200 |
-| Offline | no update for 150 s (30 missed 5 s readings) |
+| Sensor mounted above ground | 94 cm (37″) |
+| Warning | water above 30 cm |
+| Critical | water above 60 cm |
+| Offline | no update for 2 minutes (24 missed 5 s readings) |
 | Check interval | 1 minute |
 | Warning cooldown | 30 minutes |
 | Offline reminder | every 6 hours |
@@ -220,12 +220,13 @@ npm --prefix functions test
 - The CSP in `firebase.json` only restricts `script-src` (CDNs are pinned with
   integrity hashes); it does not restrict connections, images, or styles.
 - Thresholds and fallback station names exist in both `src/functions/stationsData.js`
-  and `functions/decide.js`; change them together. The `parseTimestamp` copies
+  and `functions/decide.js`; change them together. They must also match the BahGo
+  app (`SensorTracker.kt` and its push function) and the ESP32 LED cut-offs. The `parseTimestamp` copies
   in `src/functions/parseTimestamp.js` and `functions/decide.js` must also match.
 
 ## Troubleshooting
 
-- **Station shows offline:** `Last_Updated` is older than 150 seconds.
+- **Station shows offline:** `Last_Updated` is older than 2 minutes.
 - **No alert emails:** check the `SMTP_USER`/`SMTP_PASS` secrets and
   `firebase functions:log`.
 - **Login returns to the login screen:** the account has no `users/{uid}`

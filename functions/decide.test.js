@@ -30,6 +30,9 @@ test('decide: [description, prevState, reading, expected event types, expected s
     ['safe -> critical -> email', {}, { ...fresh, Distance_cm: 1 }, ['critical'], { floodStatus: 'critical', lastFloodEmail: NOW }, false],
     ['safe -> warning -> email', {}, { ...fresh, Distance_cm: 40 }, ['warning'], { floodStatus: 'warning', lastFloodEmail: NOW }, false],
     ['same warning again -> silent', { floodStatus: 'warning' }, { ...fresh, Distance_cm: 40 }, [], {}, false],
+    ['exactly 30 cm of water -> still safe', {}, { ...fresh, Distance_cm: 64 }, [], {}, false],
+    ['heavy rain on a dry street -> no alert', {}, { ...fresh, Rain_Value: 0 }, [], {}, false],
+    ['distance 0 (invalid echo) -> ignored', {}, { ...fresh, Distance_cm: 0 }, [], {}, false],
     ['unparseable timestamp -> ignored', {}, { Last_Updated: 'junk' }, [], {}, undefined]
   ];
   for (const [name, prev, reading, types, next, due] of rows) {

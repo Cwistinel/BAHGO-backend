@@ -132,7 +132,7 @@ export function openPalarMapPopup(stationId) {
                 <div class="s-row"><span>Water Level:</span><span class="val">${s.level} cm</span></div>
                 <div class="s-row"><span>Precipitation:</span><span class="val">${s.precip} mm/hr</span></div>
                 <div class="s-row"><span>Rise Rate:</span><span class="val">${s.rate} cm/hr</span></div>
-                <div class="s-row"><span>Status:</span><span class="val">${s.status.toUpperCase()}</span></div>
+                <div class="s-row"><span>Status:</span><span class="val">${s.sensorError ? 'SENSOR ERROR' : s.status.toUpperCase()}</span></div>
             </div>
             <div id="palarPopupMap" class="palar-popup-map" style="margin-top:12px;width:100%;border-radius:12px;border:1px solid #E2E8F0;z-index:1"></div>
             <p style="font-size:0.75rem;color:#6B7280;margin:6px 0 10px 0">📍 ${esc(s.name)}, Palar Village, Taguig City - Device Location</p>
@@ -351,7 +351,7 @@ export function initTaguigMaps() {
                     marker._color = color;
                     map._stationMarkers[s.id] = marker;
                 }
-                marker.setLngLat([sLng, sLat]).getPopup().setHTML(`${esc(sName)}<br/>${esc(s.status)}<br/>${esc(s.level)} cm`);
+                marker.setLngLat([sLng, sLat]).getPopup().setHTML(`${esc(sName)}<br/>${esc(s.sensorError ? 'sensor error' : s.status)}<br/>${esc(s.level)} cm`);
                 seen.add(s.id);
                 locations.push([sLat, sLng]);
             });

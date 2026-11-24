@@ -86,7 +86,7 @@ exports.checkStations = onSchedule(
         history.push(db.doc('readings/' + id).set({
           station: key, ts, Last_Updated: s.Last_Updated,
           Distance_cm: s.Distance_cm ?? null, Rain_Value: s.Rain_Value ?? null, Rain_Status: s.Rain_Status ?? null,
-          level: s.Distance_cm == null ? null : floodInfo(s).level
+          level: Number(s.Distance_cm) > 0 ? floodInfo(s).level : null
         }));
       }
     }
