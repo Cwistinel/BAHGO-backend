@@ -1,4 +1,4 @@
-import { recordReading, resample, forecastLevel, riskScore, scoreStatus } from './floodModel';
+import { recordReading, resample, forecastLevel, riskScore, scoreStatus, levelTrend } from './floodModel';
 
 const MIN = 60 * 1000;
 const T0 = Date.parse('2026-11-24T08:00:00+08:00');
@@ -54,4 +54,15 @@ test('recordReading keeps the history used by the forecast', () => {
     expect(Math.abs(forecastLevel('Sensordata9') - 15)).toBeLessThan(2);
     recordReading('Sensordata9', T0, 15, NaN);               // clock went backwards: starts over
     expect(forecastLevel('Sensordata9')).toBeNull();
+});
+test('levelTrend: collecting, steady, rising and falling like the app', () => {
+    expect(levelTrend('a', readings(2, () => 10)).state).toBe('collecting');        // under 3 minutes
+    expect(levelTrend('a', readings(15, () => 10)).state).toBe('steady');
+    expect(levelTrend('a', readings(15, (m) => 10 + m * 0.03)).state).toBe('steady');   // 1.8 cm/hr: below 3
+    const up = levelTrend('a', readings(15, (m) => 10 + m * 0.2));                      // 12 cm/hr
+    expect(up.state).toBe('rising');
+    expect(up.rate).toBeCloseTo(12, 5);
+    expect(levelTrend('a', readings(15, (m) => 40 - m * 0.2)).state).toBe('falling');
+    // Only the last 15 minutes count: an old rise followed by a flat stretch is steady
+    expect(levelTrend('a', readings(40, (m) => (m < 20 ? m : 20))).state).toBe('steady');
 });

@@ -11,6 +11,7 @@ import { loadAdminUsers, initSuperUsers } from './superUsers';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { signOut, updatePassword } from 'firebase/auth';
+import { friendlyAuthError } from './authMessages';
 import { initAvatar, applyAvatar } from './avatar';
 
 export function initBahgoApp() {
@@ -28,10 +29,23 @@ export function initBahgoApp() {
             if (!emailRegex.test(email)) { emailErrorDiv.textContent = 'Please enter a valid email address'; emailErrorDiv.style.display = 'block'; return; }
             if (!password) { passwordErrorDiv.textContent = 'Please enter a password'; passwordErrorDiv.style.display = 'block'; return; }
             try { loginBtn.disabled = true; loginBtn.textContent = 'Signing in...'; await login(email, password); }
-            catch (err) { passwordErrorDiv.textContent = err.code === 'auth/invalid-credential' ? 'Wrong email or password.' : (err.message || 'Login failed.'); passwordErrorDiv.style.display = 'block'; }
+            catch (err) { passwordErrorDiv.textContent = friendlyAuthError(err, 'Login failed. Please try again.'); passwordErrorDiv.style.display = 'block'; }
             finally { loginBtn.disabled = false; loginBtn.textContent = 'Log in'; }
         };
     }
+
+    // Show / hide password fields. Assigned with onclick (not addEventListener) so running this
+    // setup twice, as React does in development, can't attach two handlers that cancel each other out.
+    document.querySelectorAll('[data-show-pass]').forEach(btn => {
+        btn.onclick = () => {
+            const input = document.getElementById(btn.dataset.showPass);
+            if (!input) return;
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            btn.textContent = show ? 'Hide' : 'Show';
+            btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        };
+    });
 
     const setNewPassBtn = document.getElementById('setNewPassBtn');
     if (setNewPassBtn) {
@@ -43,9 +57,9 @@ export function initBahgoApp() {
             const confirmPassword = confirmPassInput?.value || '';
             if (errorDiv) errorDiv.style.display = 'none';
 
-            if (newPassword.length < 6) {
+            if (newPassword.length < 8) {
                 if (errorDiv) {
-                    errorDiv.textContent = 'Password must be at least 6 characters.';
+                    errorDiv.textContent = 'Password must be at least 8 characters.';
                     errorDiv.style.display = 'block';
                 }
                 return;
@@ -80,7 +94,7 @@ export function initBahgoApp() {
                 await signOut(auth);
             } catch (err) {
                 if (errorDiv) {
-                    errorDiv.textContent = err.message || 'Could not update password. Please try again.';
+                    errorDiv.textContent = friendlyAuthError(err, 'Could not update password. Please try again.');
                     errorDiv.style.display = 'block';
                 }
             } finally {
@@ -101,7 +115,7 @@ export function initBahgoApp() {
                 if (newPassInput) newPassInput.value = '';
                 if (confirmPassInput) confirmPassInput.value = '';
             } catch (err) {
-                showToast(`Could not return to login: ${err.message}`, 'error');
+                showToast(friendlyAuthError(err, 'Could not return to login. Please reload the page.'), 'error');
             }
         };
     }
@@ -126,8 +140,8 @@ export function initBahgoApp() {
             const currentUser = auth.currentUser;
             if (!currentUser) { showToast("You must be logged in!", 'error'); return; }
             if (!name) { showToast("Display name cannot be empty!", 'error'); return; }
-            try { await saveUserProfile(currentUser.uid, { name }); document.getElementById('userName').textContent = name; showToast('Profile saved! Firestore updated.', 'success'); }
-            catch (err) { showToast('Could not save: ' + err.message, 'error'); }
+            try { await saveUserProfile(currentUser.uid, { name }); document.getElementById('userName').textContent = name; showToast('Name saved.', 'success'); }
+            catch (err) { showToast(friendlyAuthError(err, 'Could not save. Please try again.'), 'error'); }
         };
     }
     const saveSuperProfileBtn = document.getElementById('saveSuperProfile');
@@ -137,8 +151,8 @@ export function initBahgoApp() {
             const currentUser = auth.currentUser;
             if (!currentUser) { showToast("You must be logged in!", 'error'); return; }
             if (!name) { showToast("Display name cannot be empty!", 'error'); return; }
-            try { await saveUserProfile(currentUser.uid, { name }); const superNameEl = document.getElementById('superUserName'); if (superNameEl) superNameEl.textContent = name; document.getElementById('userName').textContent = name; showToast('Super Profile saved!', 'success'); }
-            catch (err) { showToast('Could not save: ' + err.message, 'error'); }
+            try { await saveUserProfile(currentUser.uid, { name }); const superNameEl = document.getElementById('superUserName'); if (superNameEl) superNameEl.textContent = name; document.getElementById('userName').textContent = name; showToast('Name saved.', 'success'); }
+            catch (err) { showToast(friendlyAuthError(err, 'Could not save. Please try again.'), 'error'); }
         };
     }
 
@@ -197,9 +211,9 @@ export function initBahgoApp() {
                         document.getElementById('userName').textContent = data.name || user.email;
                         const superNameEl = document.getElementById('superUserName'); if (superNameEl) superNameEl.textContent = data.name || user.email;
                         const settingsName = document.getElementById('settingsName'); const settingsEmail = document.getElementById('settingsEmail');
-                        if (settingsName) settingsName.value = data.name || ''; if (settingsEmail) settingsEmail.value = user.email;
+                        if (settingsName) settingsName.value = data.name || ''; if (settingsEmail) settingsEmail.textContent = user.email;
                         const superSettingsName = document.getElementById('superSettingsName'); const superSettingsEmail = document.getElementById('superSettingsEmail');
-                        if (superSettingsName) superSettingsName.value = data.name || ''; if (superSettingsEmail) superSettingsEmail.value = user.email;
+                        if (superSettingsName) superSettingsName.value = data.name || ''; if (superSettingsEmail) superSettingsEmail.textContent = user.email;
                     }
                     if (isSuper) { showSuperDashboard(); initSuperUsers(); loadAdminUsers(); } else { showDashboard(); }
                 } catch (error) { if (isSuper) { showSuperDashboard(); initSuperUsers(); loadAdminUsers(); } else { showDashboard(); } }

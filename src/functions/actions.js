@@ -1,4 +1,13 @@
+let pressedOnBackdrop = false;
+document.addEventListener('mousedown', (e) => {
+    pressedOnBackdrop = e.target.id === 'stationModal';
+});
+
 document.addEventListener('click', (e) => {
+    if (e.target.id === 'stationModal' && pressedOnBackdrop) {
+        e.target.classList.remove('active');
+        return;
+    }
     const el = e.target.closest('[data-action]');
     if (!el) return;
     const id = el.dataset.stationId;

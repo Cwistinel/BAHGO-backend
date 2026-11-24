@@ -16,9 +16,9 @@ export async function loadAdminUsers() {
             if (u.lastLogin) lastLoginDisplay = new Date(u.lastLogin).toLocaleString();
             else if (u.createdAt) lastLoginDisplay = new Date(u.createdAt).toLocaleString() + ' (created)';
             if (u.role === 'Super User') {
-                rows += `<tr><td>${esc(u.email)}</td><td><span class='status-badge critical'>Super User</span></td><td>${esc(lastLoginDisplay)}</td><td>Active</td><td><span style='color:#888'>Protected</span></td></tr>`;
+                rows += `<tr><td data-label='Email'>${esc(u.email)}</td><td data-label='Role'><span class='status-badge critical'>Super User</span></td><td data-label='Last Login'>${esc(lastLoginDisplay)}</td><td data-label='Status'>Active</td><td data-label='Action'><span style='color:#888'>Protected</span></td></tr>`;
             } else {
-                rows += `<tr><td>${esc(u.email)}</td><td><span class='status-badge safe'>Admin</span></td><td>${esc(lastLoginDisplay)}</td><td>Active</td><td><button data-action='delete-admin' data-uid='${esc(docSnap.id)}' data-email='${esc(u.email)}' style='background:#EF4444;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer'>Delete</button></td></tr>`;
+                rows += `<tr><td data-label='Email'>${esc(u.email)}</td><td data-label='Role'><span class='status-badge safe'>Admin</span></td><td data-label='Last Login'>${esc(lastLoginDisplay)}</td><td data-label='Status'>Active</td><td data-label='Action'><button data-action='delete-admin' data-uid='${esc(docSnap.id)}' data-email='${esc(u.email)}' style='background:#EF4444;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer'>Delete</button></td></tr>`;
             }
         });
         tbody.innerHTML = rows || `<tr><td colspan='5' style='text-align:center;color:#888'>No users yet</td></tr>`;

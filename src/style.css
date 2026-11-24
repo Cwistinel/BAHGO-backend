@@ -258,3 +258,98 @@ body { font-family: 'Poppins', sans-serif; background: #fff; overflow-x: hidden;
 .rp-warn { background: #FEF3C7; color: #92400E; }
 .rp-info { background: #F1F5F9; color: #334155; }
 .rp-steps { max-height: 220px; overflow-y: auto; margin: 8px 0 0 18px; }
+/* ---------- UI fixes (Nov 24) ---------- */
+/* Status dot by severity; offline stations keep their last known colour, faded and without the pulse */
+.dot.safe { background: #22C55E; animation: dotPulseGreen 2.4s infinite; }
+.dot.warning { background: #F59E0B; animation: dotPulseYellow 1.5s infinite; }
+.dot.critical { background: #EF4444; animation: dotPulseRed 0.8s infinite; }
+.dot.offline { opacity: 0.45; animation: none; box-shadow: 0 0 0 2px #94A3B8; }
+
+/* Card border by severity (offline cards by their last known status) */
+.station-card.sev-critical { border: 2px solid #EF4444; }
+.station-card.sev-warning { border: 2px solid #F59E0B; }
+.station-card.offline { border-style: dashed; }
+.location-text { font-size: 0.75rem; color: #6B7280; }
+
+/* "Updated 12 s ago" / "Last seen 3 h ago": amber when offline < 1 h, red after that */
+.age { font-size: 0.75rem; color: #6B7280; }
+.age.stale { color: #B45309; font-weight: 600; }
+.age.dead { color: #DC2626; font-weight: 600; }
+
+/* Detailed list: no wrapped badges or units */
+.data-table th, .data-table td { white-space: nowrap; }
+.status-badge { display: inline-block; white-space: nowrap; }
+
+/* Station details fit the screen: header stays visible, body scrolls */
+.modal-content { max-height: 90vh; overflow-y: auto; }
+
+/* Login */
+.password-wrap { position: relative; }
+.password-wrap input { padding-right: 70px; }
+.show-pass { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--primary-blue); font-weight: 600; font-size: 0.8rem; cursor: pointer; font-family: 'Poppins', sans-serif; padding: 6px; }
+.login-note { margin: -8px 0 0; font-size: 0.85rem; color: var(--text-muted); text-align: right; }
+.show-pass:disabled { opacity: 0.6; cursor: default; }
+
+/* Settings */
+.readonly-info { display: grid; grid-template-columns: auto 1fr; gap: 8px 20px; margin-top: 22px; font-size: 0.9rem; }
+.readonly-info dt { font-weight: 600; color: var(--text-muted); }
+.readonly-info dd { margin: 0; color: var(--text-main); }
+.section-note { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px; }
+.notify-list { margin: 0; padding-left: 20px; font-size: 0.9rem; color: var(--text-main); line-height: 1.9; }
+.device-row { gap: 10px; }
+.device-row span:first-child { white-space: nowrap; }
+.device-row span:last-child { text-align: right; }
+
+/* ---------- Responsive layout (Nov 24): adapts to the space available, not just the window ---------- */
+/* Summary boxes and station cards fill the row and wrap to as many columns as fit */
+/* 4 across when there's room, 2 x 2 when narrower, stacked on very small screens (based on the page's own width) */
+.page-content { container-type: inline-size; container-name: page; }
+.status-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.card.device-status { grid-column: auto; }
+@container page (max-width: 760px) { .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container page (max-width: 330px) { .status-grid { grid-template-columns: minmax(0, 1fr); } }
+.station-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.dash-header { flex-wrap: wrap; gap: 12px; }
+.s-header { padding-right: 72px; }
+.s-row { gap: 12px; }
+.s-row > span:first-child { min-width: 0; }
+.s-row .val { text-align: right; overflow-wrap: anywhere; }
+.station-card h3 { overflow-wrap: anywhere; }
+
+/* Device status: the count stays on its line; "N last known at risk" goes underneath */
+.device-row span:last-child { white-space: nowrap; }
+.device-note { font-size: 0.8rem; font-weight: 600; color: #B45309; text-align: right; }
+.device-note:empty { display: none; }
+
+/* Tables never spill out of their box: text wraps inside cells (units are kept with their numbers),
+   and the box scrolls sideways as a last resort */
+.data-table { container-type: inline-size; overflow-x: auto; padding: clamp(12px, 2.5vw, 30px); }
+.data-table th, .data-table td { white-space: normal; }
+.data-table th { padding: 12px 10px; }
+.data-table td { padding: 14px 10px; }
+.status-badge { white-space: normal; line-height: 1.35; }
+
+/* When the table's box is narrow (phone, tablet, small window, zoomed in), each row becomes a card */
+@container (max-width: 720px) {
+  .data-table table { min-width: 0; }
+  .data-table thead { display: none; }
+  .data-table table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; }
+  .data-table tr { padding: 10px 0; border-bottom: 1px solid var(--border-light); }
+  .data-table tr:last-child { border-bottom: none; }
+  .data-table td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 2px; border: none; text-align: right; font-size: 0.9rem; }
+  .data-table td::before { content: attr(data-label); flex-shrink: 0; font-weight: 600; font-size: 0.8rem; color: var(--text-muted); text-align: left; }
+  .data-table td:not([data-label])::before { content: none; }
+  .data-table td:not([data-label]) { justify-content: center; text-align: center; }
+}
+
+/* Long names or emails in the sidebar / phone top bar shorten with "…" instead of overlapping */
+.avatar-circle { flex-shrink: 0; }
+.user-profile, .user-text { min-width: 0; }
+.user-text p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Pop-up windows: keep the scrollbar inside the rounded corners.
+   The transparent borders move the scroll area in from the edges; the white background still fills them. */
+.modal .modal-content { border: solid transparent; border-width: 20px 8px 20px 0; padding: 20px 32px 20px 40px; scrollbar-width: thin; }
+@media (max-width: 768px) {
+  .modal .modal-content { border-width: 14px 6px 14px 0; padding: 8px 16px 8px 22px; }
+}

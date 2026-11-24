@@ -53,15 +53,19 @@ function App() {
               <p className="sub">Login to access Admin Dashboard</p>
               <form>
                 <div className="field">
-                  <label>Email address</label>
-                  <input type="email" id="loginEmail" placeholder="Enter your email" />
+                  <label htmlFor="loginEmail">Email address</label>
+                  <input type="email" id="loginEmail" placeholder="Enter your email" autoComplete="username" />
                   <div id="emailError" className="error-bubble" style={{ display: 'none' }} />
                 </div>
                 <div className="field">
-                  <label>Password</label>
-                  <input type="password" id="loginPass" placeholder="Enter your password" />
+                  <label htmlFor="loginPass">Password</label>
+                  <div className="password-wrap">
+                    <input type="password" id="loginPass" placeholder="Enter your password" autoComplete="current-password" />
+                    <button type="button" className="show-pass" data-show-pass="loginPass" aria-label="Show password">Show</button>
+                  </div>
                   <div id="passwordError" className="error-bubble" style={{ display: 'none' }} />
                 </div>
+                <p className="login-note">Forgot your password? Ask the Super User to remove and re-add your account.</p>
                 <button type="submit" id="loginBtn" className="btn-login">Log in</button>
               </form>
             </div>
@@ -78,8 +82,8 @@ function App() {
           </div>
           <div style={{ padding: '20px 0' }}>
             <p style={{ fontSize: '0.9rem', color: '#6B7280', marginBottom: '16px' }}>Welcome! This is your first login. Please set a new password that only you know.</p>
-            <div className="field"><label>New Password</label><input type="password" id="newPass1" placeholder="Enter new password (min 6 chars)" /></div>
-            <div className="field"><label>Confirm New Password</label><input type="password" id="newPass2" placeholder="Confirm new password" /></div>
+            <div className="field"><label htmlFor="newPass1">New Password</label><input type="password" id="newPass1" placeholder="At least 8 characters" autoComplete="new-password" /></div>
+            <div className="field"><label htmlFor="newPass2">Confirm New Password</label><input type="password" id="newPass2" placeholder="Confirm new password" autoComplete="new-password" /></div>
             <div id="newPassError" className="error-bubble" style={{ display: 'none', background: '#EF4444', color: '#fff', padding: '8px', borderRadius: '6px', marginTop: '8px' }} />
             <button className="btn-login" id="setNewPassBtn" style={{ marginTop: '16px' }}>Set New Password & Continue</button>
           </div>
@@ -99,7 +103,7 @@ function App() {
             <nav className="side-nav">
               <button className="nav-btn active" data-page="overview">Overview</button>
               <button className="nav-btn" data-page="detailed">Detailed List</button>
-              <button className="nav-btn" data-page="mapView">Map - Taguig</button>
+              <button className="nav-btn" data-page="mapView">Map</button>
             </nav>
             <div style={{ marginTop: 'auto', paddingBottom: '20px' }}>
               <button className="nav-btn" data-page="settings">Settings</button>
@@ -156,6 +160,7 @@ function App() {
                       <span>☒ Offline</span>
                       <span id="offlineCount">0</span>
                     </div>
+                    <p className="device-note" id="offlineRiskNote"></p>
                   </div>
                 </div>
               </div>
@@ -166,11 +171,11 @@ function App() {
             <div id="detailed" className="page-content">
               <h2 style={{ marginBottom: '25px', fontWeight: 700 }}>Detailed Station List</h2>
               <div className="search-bar"><input type="text" id="searchInput" placeholder="Search by station name..." /></div>
-              <div className="data-table"><table><thead><tr><th>Station Name</th><th>Water Level</th><th>Precipitation</th><th>Rise Rate</th><th>Last Updated</th><th>Status</th></tr></thead><tbody id="stationTableBody" /></table></div>
+              <div className="data-table"><table><thead><tr><th>Status</th><th>Station Name</th><th>Water Level</th><th>Rain</th><th>Rise Rate (15 min)</th><th>Last Updated</th></tr></thead><tbody id="stationTableBody" /></table></div>
             </div>
 
             <div id="mapView" className="page-content">
-              <h2 style={{ marginBottom: '25px', fontWeight: 700 }}>Taguig City - Flood Monitoring Map</h2>
+              <h2 style={{ marginBottom: '25px', fontWeight: 700 }}>Palar Village - Flood Monitoring Map</h2>
               <div className="settings-section">
                 <h3>Live Map</h3>
                 <div id="taguigMap" style={{ height: '500px', width: '100%', borderRadius: '16px', border: '1px solid #E2E8F0', zIndex: 1 }}></div>
@@ -190,10 +195,22 @@ function App() {
                     <input type="file" id="photoInput" accept="image/*" style={{ display: 'none' }} />
                   </div>
                 </div>
-                <div className="field"><label>Display Name</label><input type="text" id="settingsName" defaultValue="Admin" /></div>
-                <div className="field"><label>Email</label><input type="email" id="settingsEmail" defaultValue="admin@bahgo.com" disabled /></div>
-                <div className="field"><label>Role</label><input type="text" defaultValue="Admin" disabled /></div>
-                <button className="btn-login" style={{ width: 'auto', padding: '12px 30px' }} id="saveProfile">Save Profile</button>
+                <div className="field"><label htmlFor="settingsName">Display Name</label><input type="text" id="settingsName" defaultValue="Admin" /></div>
+                <button className="btn-login" style={{ width: 'auto', padding: '12px 30px', marginTop: 0 }} id="saveProfile">Save Name</button>
+                <dl className="readonly-info">
+                  <dt>Email</dt><dd id="settingsEmail">admin@bahgo.com</dd>
+                  <dt>Role</dt><dd>Admin</dd>
+                </dl>
+              </div>
+              <div className="settings-section">
+                <h3>Notifications</h3>
+                <p className="section-note">Alert emails go to every Admin and Super User. They can't be turned off per person yet.</p>
+                <ul className="notify-list">
+                  <li><b>Critical</b>: water above 60 cm, sent immediately</li>
+                  <li><b>Warning</b>: water above 30 cm, at most every 30 minutes</li>
+                  <li><b>Offline</b>: a station stops reporting for 2 minutes, with a reminder every 6 hours</li>
+                  <li><b>Back online</b>: a station starts reporting again</li>
+                </ul>
               </div>
             </div>
           </main>
@@ -213,7 +230,7 @@ function App() {
             <nav className="side-nav">
               <button className="nav-btn active" data-page="superOverview">Overview</button>
               <button className="nav-btn" data-page="superStations">Detailed List</button>
-              <button className="nav-btn" data-page="superMapView">Map - Taguig</button>
+              <button className="nav-btn" data-page="superMapView">Map</button>
               <button className="nav-btn" data-page="superUsers">User Management</button>
             </nav>
             <div style={{ marginTop: 'auto', paddingBottom: '20px' }}>
@@ -240,7 +257,7 @@ function App() {
                 <div className="card critical"><div className="card-left"><span className="card-label">Critical</span><span className="card-value" id="superCriticalCount">0</span></div><div className="card-icon"><img src="/Image/critical.png" alt="Critical" style={{ width: '80%', height: '80%', objectFit: 'contain', margin: 'auto' }} /></div></div>
                 <div className="card warning"><div className="card-left"><span className="card-label">Warning</span><span className="card-value" id="superWarningCount">0</span></div><div className="card-icon"><img src="/Image/warning.png" alt="Warning" style={{ width: '80%', height: '80%', objectFit: 'contain', margin: 'auto' }} /></div></div>
                 <div className="card normal"><div className="card-left"><span className="card-label">Normal</span><span className="card-value" id="superNormalCount">0</span></div><div className="card-icon"><img src="/Image/normal.png" alt="Normal" style={{ width: '80%', height: '80%', objectFit: 'contain', margin: 'auto' }} /></div></div>
-                <div className="card device-status"><div style={{ width: '100%' }}><p className="card-label" style={{ marginBottom: '10px' }}>Device Status</p><div className="device-row" style={{ marginBottom: '8px' }}><span>☑ Active</span><span id="superActiveCount">0</span></div><div className="device-row"><span>☒ Offline</span><span id="superOfflineCount">0</span></div></div></div>
+                <div className="card device-status"><div style={{ width: '100%' }}><p className="card-label" style={{ marginBottom: '10px' }}>Device Status</p><div className="device-row" style={{ marginBottom: '8px' }}><span>☑ Active</span><span id="superActiveCount">0</span></div><div className="device-row"><span>☒ Offline</span><span id="superOfflineCount">0</span></div><p className="device-note" id="superOfflineRiskNote"></p></div></div>
               </div>
               <h3 style={{ marginBottom: '20px', fontWeight: 700 }}>All Monitoring Stations</h3>
               <div className="station-grid" id="superStationGrid" />
@@ -248,10 +265,10 @@ function App() {
             <div id="superStations" className="page-content">
               <h2 style={{ marginBottom: '25px', fontWeight: 700 }}>Detailed Station List</h2>
               <div className="search-bar"><input type="text" id="superSearchInput" placeholder="Search by station name..." /></div>
-              <div className="data-table"><table><thead><tr><th>Station Name</th><th>Water Level</th><th>Precipitation</th><th>Rise Rate</th><th>Last Updated</th><th>Status</th></tr></thead><tbody id="superStationTableBody" /></table></div>
+              <div className="data-table"><table><thead><tr><th>Status</th><th>Station Name</th><th>Water Level</th><th>Rain</th><th>Rise Rate (15 min)</th><th>Last Updated</th></tr></thead><tbody id="superStationTableBody" /></table></div>
             </div>
             <div id="superMapView" className="page-content">
-              <h2 style={{ marginBottom: '25px', fontWeight: 700 }}>Taguig City - Flood Monitoring Map</h2>
+              <h2 style={{ marginBottom: '25px', fontWeight: 700 }}>Palar Village - Flood Monitoring Map</h2>
               <div className="settings-section">
                 <h3>Live Map</h3>
                 <div id="superTaguigMap" style={{ height: '500px', width: '100%', borderRadius: '16px', border: '1px solid #E2E8F0', zIndex: 1 }}></div>
@@ -263,8 +280,8 @@ function App() {
                 <h3>Add New Admin</h3>
                 <p style={{ fontSize: '0.85rem', color: '#6B7280', marginBottom: '14px' }}>Create admin with temp password. On first login, admin will set new password only he/she knows.</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '12px', alignItems: 'end' }}>
-                  <div className="field" style={{ margin: 0 }}><label>Admin Email</label><input type="email" id="newAdminEmail" placeholder="newadmin@bahgo.com" /></div>
-                  <div className="field" style={{ margin: 0 }}><label>Temp Password</label><input type="text" id="newAdminTempPass" placeholder="TempPass123" /></div>
+                  <div className="field" style={{ margin: 0 }}><label htmlFor="newAdminEmail">Admin Email</label><input type="email" id="newAdminEmail" placeholder="newadmin@bahgo.com" /></div>
+                  <div className="field" style={{ margin: 0 }}><label htmlFor="newAdminTempPass">Temp Password</label><div className="password-wrap"><input type="password" id="newAdminTempPass" placeholder="At least 8 characters" autoComplete="new-password" /><button type="button" className="show-pass" data-show-pass="newAdminTempPass" aria-label="Show password">Show</button></div></div>
                   <button className="btn-login" id="addAdminBtn" style={{ width: 'auto', padding: '12px 20px' }}>Add Admin</button>
                 </div>
                 <div id="addAdminError" className="error-bubble" style={{ display: 'none', background: '#EF4444', color: '#fff', padding: '8px', borderRadius: '6px', marginTop: '10px' }} />
@@ -289,10 +306,22 @@ function App() {
                     <input type="file" id="superPhotoInput" accept="image/*" style={{ display: 'none' }} />
                   </div>
                 </div>
-                <div className="field"><label>Display Name</label><input type="text" id="superSettingsName" defaultValue="Admin" /></div>
-                <div className="field"><label>Email</label><input type="email" id="superSettingsEmail" defaultValue="admin@bahgo.com" disabled /></div>
-                <div className="field"><label>Role</label><input type="text" defaultValue="Super User" disabled /></div>
-                <button className="btn-login" style={{ width: 'auto', padding: '12px 30px' }} id="saveSuperProfile">Save Profile</button>
+                <div className="field"><label htmlFor="superSettingsName">Display Name</label><input type="text" id="superSettingsName" defaultValue="Admin" /></div>
+                <button className="btn-login" style={{ width: 'auto', padding: '12px 30px', marginTop: 0 }} id="saveSuperProfile">Save Name</button>
+                <dl className="readonly-info">
+                  <dt>Email</dt><dd id="superSettingsEmail">admin@bahgo.com</dd>
+                  <dt>Role</dt><dd>Super User</dd>
+                </dl>
+              </div>
+              <div className="settings-section">
+                <h3>Notifications</h3>
+                <p className="section-note">Alert emails go to every Admin and Super User. They can't be turned off per person yet.</p>
+                <ul className="notify-list">
+                  <li><b>Critical</b>: water above 60 cm, sent immediately</li>
+                  <li><b>Warning</b>: water above 30 cm, at most every 30 minutes</li>
+                  <li><b>Offline</b>: a station stops reporting for 2 minutes, with a reminder every 6 hours</li>
+                  <li><b>Back online</b>: a station starts reporting again</li>
+                </ul>
               </div>
             </div>
           </main>
@@ -309,4 +338,5 @@ function App() {
     </>
   );
 }
+
 export default App;

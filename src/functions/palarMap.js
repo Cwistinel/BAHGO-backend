@@ -2,6 +2,7 @@ import { state } from '../state';
 import { esc } from './escape';
 import { doc, setDoc, collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import { LOCATION_LABEL, stationRows, statusText } from './stationText';
 
 export const stationLocations = {};
 
@@ -22,8 +23,6 @@ export function listenToStationLocations() {
         renderTaguigMaps();
     }, (err) => console.warn('station_locations listener error:', err));
 }
-
-export const getPalarBarangay = (name) => (name.toLowerCase().includes('palar') ? 'Palar' : 'Western Bicutan');
 
 const NOAH_PMTILES_URL = 'pmtiles://https://huggingface.co/datasets/bettergovph/project-noah-hazard-maps/resolve/main/PMTiles/noah_hazard_maps.pmtiles';
 
@@ -125,17 +124,15 @@ export function openPalarMapPopup(stationId) {
     const savedLoc = stationLocations[s.id] || null;
     const lat = savedLoc ? savedLoc.lat : 14.5325;
     const lng = savedLoc ? savedLoc.lng : 121.0655;
-    if (modalTitle) modalTitle.textContent = `${s.name} - Palar, Taguig`;
+    if (modalTitle) modalTitle.textContent = `${s.name} - ${LOCATION_LABEL}`;
     if (modalBody) {
         modalBody.innerHTML = `
             <div style="display:flex;flex-direction:column;gap:8px">
-                <div class="s-row"><span>Water Level:</span><span class="val">${s.level} cm</span></div>
-                <div class="s-row"><span>Precipitation:</span><span class="val">${s.precip} mm/hr</span></div>
-                <div class="s-row"><span>Rise Rate:</span><span class="val">${s.rate} cm/hr</span></div>
-                <div class="s-row"><span>Status:</span><span class="val">${s.sensorError ? 'SENSOR ERROR' : s.status.toUpperCase()}</span></div>
+                ${stationRows(s)}
+                <div class="s-row"><span>Status:</span><span class="val">${statusText(s)}</span></div>
             </div>
             <div id="palarPopupMap" class="palar-popup-map" style="margin-top:12px;width:100%;border-radius:12px;border:1px solid #E2E8F0;z-index:1"></div>
-            <p style="font-size:0.75rem;color:#6B7280;margin:6px 0 10px 0">📍 ${esc(s.name)}, Palar Village, Taguig City - Device Location</p>
+            <p style="font-size:0.75rem;color:#6B7280;margin:6px 0 10px 0">📍 ${esc(s.name)}, ${LOCATION_LABEL} - Device Location</p>
             ${isSuperAdminDashboard ? `<button class="btn-login" style="width:auto;padding:12px 30px" data-action="edit-location" data-station-id="${esc(s.id)}">Edit Location</button>` : ''}
         `;
     }
@@ -197,7 +194,7 @@ export function openPalarEditModal(stationId) {
             </div>
             <div class="field">
                 <label>Barangay</label>
-                <input type="text" value="Palar, Taguig" disabled style="background:#f3f4f6" />
+                <input type="text" value="${LOCATION_LABEL}" disabled style="background:#f3f4f6" />
             </div>
             <div id="palarEditMap" style="margin-top:12px;height:300px;width:100%;border-radius:12px;border:1px solid #E2E8F0;z-index:1"></div>
             <div style="display:flex;gap:12px;margin-top:16px">

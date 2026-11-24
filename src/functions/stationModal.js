@@ -1,6 +1,6 @@
 import { state } from '../state';
 import { SENSOR_MOUNT_HEIGHT_CM, WARN_LEVEL_CM, CRIT_LEVEL_CM } from './stationsData';
-import { forecastRows } from './stationsRender';
+import { stationRows, statusText, ageLabel, ageClass } from './stationText';
 
 export async function openStationModal(id) {
     const s = state.stations.find(st => st.id === id);
@@ -8,15 +8,11 @@ export async function openStationModal(id) {
 
     let modalHtml = `
         <div class="s-stats">
-            <div class="s-row"><span>Current Water Level:</span><span class="val">${s.level} cm</span></div>
-            <div class="s-row"><span>Precipitation:</span><span class="val">${s.precip} mm/hr</span></div>
-            <div class="s-row"><span>Rise Rate:</span><span class="val">${s.rate} cm/hr</span></div>
-${forecastRows(s)}
-            <div class="s-row"><span>Current Status:</span><span class="val">${s.sensorError ? 'SENSOR ERROR' : s.status.toUpperCase()}</span></div>
-            ${s.status === 'offline' ? `<div class="s-row"><span>Last Known Status:</span><span class="val">${(s.lastKnownStatus || 'safe').toUpperCase()}</span></div>` : ''}
-            <div class="s-row"><span>Last Updated:</span><span class="val">${new Date(s.timestamp).toLocaleString()}</span></div>
+            ${stationRows(s)}
+            <div class="s-row"><span>Status:</span><span class="val">${statusText(s)}</span></div>
+            <div class="s-row"><span>Last Updated:</span><span class="val age ${ageClass(s)}">${ageLabel(s)} (${new Date(s.timestamp).toLocaleString()})</span></div>
         </div>
-        <p style="margin-top: 20px; font-weight: 600; color: var(--text-muted);">1-Hour Predicted Trend (model estimate)</p>
+        <p style="margin-top: 20px; font-weight: 600; color: var(--text-muted);">Next hour if the measured rise rate continues (estimate)</p>
     `;
 
     if (s.sensorError) {
@@ -24,6 +20,12 @@ ${forecastRows(s)}
         <div style="text-align:center; padding: 30px; background: #f9fafb; border-radius: 8px; margin-top: 10px; border: 1px dashed #d1d5db;">
             <p style="color: #6b7280; font-weight: 600; margin-bottom: 5px;">⚠️ Sensor Error</p>
             <p style="color: #9ca3af; font-size: 0.9rem;">The device is online but the water sensor has not returned a reading for over a minute. Check the sensor.</p>
+        </div>`;
+    } else if (s.status !== 'offline' && (!s.trend || s.trend.state === 'collecting')) {
+        modalHtml += `
+        <div style="text-align:center; padding: 30px; background: #f9fafb; border-radius: 8px; margin-top: 10px; border: 1px dashed #d1d5db;">
+            <p style="color: #6b7280; font-weight: 600; margin-bottom: 5px;">Collecting readings…</p>
+            <p style="color: #9ca3af; font-size: 0.9rem;">The rise rate and this chart appear after a few minutes of readings while this page is open.</p>
         </div>`;
     } else if (s.status === 'offline') {
         modalHtml += `
@@ -49,7 +51,7 @@ ${forecastRows(s)}
 
     if (state.stationChart) state.stationChart.destroy();
 
-    if (s.status === 'offline') {
+    if (s.status === 'offline' || !s.trend || s.trend.state === 'collecting') {
         canvas.style.display = 'none';
         return;
     }
@@ -57,12 +59,12 @@ ${forecastRows(s)}
     canvas.style.display = 'block';
     const ctx = canvas.getContext('2d');
 
-    const riseRate = Math.max(s.rate, 0);
+    const riseRate = s.trend.rate;   // measured cm/hr; 0 when steady
 
     const predictData = [s.level];
     let projectedLevel = s.level;
     for (let i = 10; i <= 60; i += 10) {
-        projectedLevel = Math.min(projectedLevel + riseRate / 6, SENSOR_MOUNT_HEIGHT_CM);
+        projectedLevel = Math.min(Math.max(projectedLevel + riseRate / 6, 0), SENSOR_MOUNT_HEIGHT_CM);
         predictData.push(Math.round(projectedLevel * 100) / 100);
     }
 

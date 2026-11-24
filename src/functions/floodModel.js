@@ -103,5 +103,34 @@ export function riskScore(id, points = history[id] || []) {
     return r ? Math.min(100, Math.max(0, r.raw)) : null;
 }
 
+const TREND_WINDOW_MS = 15 * 60 * 1000;
+const TREND_MIN_SAMPLES = 4;
+const TREND_MIN_SPAN_MS = 3 * 60 * 1000;
+const STEADY_CM_PER_HR = 3;
+
+/**
+ * Measured rise rate, same as the app's SensorTracker.trendOf: a best-fit line through the
+ * last 15 minutes of readings. Changes smaller than 3 cm/hr, or than twice the line's own
+ * uncertainty, count as steady. Returns { state: 'collecting' | 'steady' | 'rising' | 'falling', rate }.
+ */
+export function levelTrend(id, points = history[id] || []) {
+    if (!points.length) return { state: 'collecting', rate: null };
+    const from = points[points.length - 1][0] - TREND_WINDOW_MS;
+    const pts = points.filter(p => p[0] >= from);
+    const n = pts.length;
+    if (n < TREND_MIN_SAMPLES || pts[n - 1][0] - pts[0][0] < TREND_MIN_SPAN_MS) return { state: 'collecting', rate: null };
+    const xs = pts.map(p => (p[0] - pts[0][0]) / 3600000), ys = pts.map(p => p[1]);
+    const xMean = xs.reduce((a, b) => a + b, 0) / n, yMean = ys.reduce((a, b) => a + b, 0) / n;
+    let sxx = 0, sxy = 0;
+    for (let i = 0; i < n; i++) { sxx += (xs[i] - xMean) ** 2; sxy += (xs[i] - xMean) * (ys[i] - yMean); }
+    if (sxx <= 0) return { state: 'collecting', rate: null };
+    const slope = sxy / sxx, intercept = yMean - slope * xMean;
+    let sse = 0;
+    for (let i = 0; i < n; i++) sse += (ys[i] - (intercept + slope * xs[i])) ** 2;
+    const slopeError = Math.sqrt(sse / (n - 2) / sxx);
+    if (Math.abs(slope) < Math.max(STEADY_CM_PER_HR, 2 * slopeError)) return { state: 'steady', rate: 0 };
+    return { state: slope > 0 ? 'rising' : 'falling', rate: slope };
+}
+
 /** 'critical' (90+), 'warning' (50-89) or 'safe' (shown as Low), like the app. */
 export const scoreStatus = (score) => (score >= SCORE_CRITICAL ? 'critical' : score >= SCORE_WARNING ? 'warning' : 'safe');
