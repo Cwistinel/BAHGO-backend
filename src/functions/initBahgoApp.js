@@ -8,7 +8,7 @@ import { updateClock } from './clock';
 import { switchPage, switchSuperPage, showDashboard, showSuperDashboard } from './navigation';
 import { renderTable } from './stationsRender';
 import { loadAdminUsers, initSuperUsers } from './superUsers';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { signOut, updatePassword } from 'firebase/auth';
 import { friendlyAuthError } from './authMessages';
@@ -177,7 +177,10 @@ export function initBahgoApp() {
                
                 let userDocSnap;
                 try {
-                    userDocSnap = await getDoc(doc(db, 'users', user.uid));
+                    // Read the profile from the server so the name and photo are the saved ones;
+                    // fall back to the local copy only if the server can't be reached.
+                    const userRef = doc(db, 'users', user.uid);
+                    userDocSnap = await getDocFromServer(userRef).catch(() => getDoc(userRef));
                     if (!userDocSnap.exists()) {
                         await signOut(auth);
                         document.getElementById('dashboardScreen')?.classList.remove('active');
