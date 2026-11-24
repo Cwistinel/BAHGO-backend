@@ -1,6 +1,7 @@
 import { state } from '../state';
 import { esc } from './escape';
-import { LOCATION_LABEL, ageLabel, ageClass, severityOf, statusText, stationRows, trendText, rainText } from './stationText';
+import { LOCATION_LABEL, ageLabel, ageClass, severityOf, statusText, stationRows, trendText, rainText, levelText, timeText } from './stationText';
+import { serverNow } from './serverClock';
 
 export function updateCounts() {
     const count = (st) => state.stations.filter(s => s.status === st || (s.status === 'offline' && s.lastKnownStatus === st)).length;
@@ -25,7 +26,7 @@ export function renderStations() {
     const grid = document.getElementById('stationGrid');
     const superGrid = document.getElementById('superStationGrid');
     if (!grid && !superGrid) return;
-    const now = Date.now();
+    const now = serverNow();
     const html = state.stations.map(s => {
         const sev = severityOf(s);
         const offline = s.status === 'offline' ? ' offline' : '';
@@ -41,7 +42,7 @@ export function renderStations() {
                 <div>
                     <h3>${esc(s.name)}</h3>
                     <p class="location-text">${LOCATION_LABEL}</p>
-                    <p class="age ${ageClass(s, now)}" title="${esc(new Date(s.timestamp).toLocaleString())}">${ageLabel(s, now)}</p>
+                    <p class="age ${ageClass(s, now)}" title="${esc(timeText(s))}">${ageLabel(s, now)}</p>
                 </div>
             </div>
             <div class="s-stats">${stationRows(s)}</div>
@@ -56,16 +57,16 @@ export function renderTable(filter = document.querySelector('.screen.active :is(
     const tbody = document.getElementById('stationTableBody');
     const superTbody = document.getElementById('superStationTableBody');
     if (!tbody && !superTbody) return;
-    const now = Date.now();
+    const now = serverNow();
     const filtered = state.stations.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
     const rows = filtered.map(s => `
         <tr data-action="open-station" data-station-id="${esc(s.id)}">
             <td data-label="Status"><span class="status-badge ${s.status}">${statusText(s)}</span></td>
             <td data-label="Station">${esc(s.name)}</td>
-            <td data-label="Water Level">${s.level}&nbsp;cm</td>
+            <td data-label="Water Level">${levelText(s).replace(' ', '&nbsp;')}</td>
             <td data-label="Rain">${rainText(s)}</td>
             <td data-label="Rise Rate">${trendText(s)}</td>
-            <td data-label="Last Updated" class="age ${ageClass(s, now)}" title="${esc(new Date(s.timestamp).toLocaleString())}">${ageLabel(s, now)}</td>
+            <td data-label="Last Updated" class="age ${ageClass(s, now)}" title="${esc(timeText(s))}">${ageLabel(s, now)}</td>
         </tr>
     `).join('');
     if (tbody) tbody.innerHTML = rows;

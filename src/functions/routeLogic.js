@@ -1,4 +1,5 @@
 import { parseTimestamp } from './parseTimestamp';
+import { serverNow } from './serverClock';
 
 export const ZONE_RADIUS_M = 50;
 const ZONE_SIDES = 16;
@@ -41,7 +42,7 @@ export function distToPathM(p, path) {
 
 export const crossed = (path, zones) => zones.filter(z => distToPathM([z.lng, z.lat], path) < ZONE_RADIUS_M);
 
-export function effectiveStatus(station, staleMs, now = Date.now()) {
+export function effectiveStatus(station, staleMs, now = serverNow()) {
     if (!station) return 'unknown';
     const offline = station.status === 'offline' || !(now - parseTimestamp(station.timestamp) <= staleMs);
     if (!offline) return station.status;

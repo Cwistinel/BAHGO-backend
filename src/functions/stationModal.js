@@ -1,6 +1,6 @@
 import { state } from '../state';
 import { SENSOR_MOUNT_HEIGHT_CM, WARN_LEVEL_CM, CRIT_LEVEL_CM } from './stationsData';
-import { stationRows, statusText, ageLabel, ageClass } from './stationText';
+import { stationRows, statusText, ageLabel, ageClass, timeText } from './stationText';
 
 export async function openStationModal(id) {
     const s = state.stations.find(st => st.id === id);
@@ -10,7 +10,7 @@ export async function openStationModal(id) {
         <div class="s-stats">
             ${stationRows(s)}
             <div class="s-row"><span>Status:</span><span class="val">${statusText(s)}</span></div>
-            <div class="s-row"><span>Last Updated:</span><span class="val age ${ageClass(s)}">${ageLabel(s)} (${new Date(s.timestamp).toLocaleString()})</span></div>
+            <div class="s-row"><span>Last Updated:</span><span class="val age ${ageClass(s)}">${ageLabel(s)} (${timeText(s)})</span></div>
         </div>
         <p style="margin-top: 20px; font-weight: 600; color: var(--text-muted);">Next hour if the measured rise rate continues (estimate)</p>
     `;
@@ -19,7 +19,7 @@ export async function openStationModal(id) {
         modalHtml += `
         <div style="text-align:center; padding: 30px; background: #f9fafb; border-radius: 8px; margin-top: 10px; border: 1px dashed #d1d5db;">
             <p style="color: #6b7280; font-weight: 600; margin-bottom: 5px;">⚠️ Sensor Error</p>
-            <p style="color: #9ca3af; font-size: 0.9rem;">The device is online but the water sensor has not returned a reading for over a minute. Check the sensor.</p>
+            <p style="color: #9ca3af; font-size: 0.9rem;">The water sensor has not sent a valid reading. Check the sensor.</p>
         </div>`;
     } else if (s.status !== 'offline' && (!s.trend || s.trend.state === 'collecting')) {
         modalHtml += `

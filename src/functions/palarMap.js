@@ -2,7 +2,7 @@ import { state } from '../state';
 import { esc } from './escape';
 import { doc, setDoc, collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
-import { LOCATION_LABEL, stationRows, statusText } from './stationText';
+import { LOCATION_LABEL, stationRows, statusText, levelText } from './stationText';
 
 export const stationLocations = {};
 
@@ -348,7 +348,7 @@ export function initTaguigMaps() {
                     marker._color = color;
                     map._stationMarkers[s.id] = marker;
                 }
-                marker.setLngLat([sLng, sLat]).getPopup().setHTML(`${esc(sName)}<br/>${esc(s.sensorError ? 'sensor error' : s.status)}<br/>${esc(s.level)} cm`);
+                marker.setLngLat([sLng, sLat]).getPopup().setHTML(`${esc(sName)}<br/>${esc(s.sensorError ? 'sensor error' : s.status)}<br/>${esc(levelText(s))}`);
                 seen.add(s.id);
                 locations.push([sLat, sLng]);
             });

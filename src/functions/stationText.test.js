@@ -45,3 +45,20 @@ test('station rows: same rows everywhere, estimates labelled', () => {
     expect(html).not.toContain('mm/hr');
     expect(LOCATION_LABEL).toBe('Palar Village, Taguig');
 });
+
+describe('no reading and server clock', () => {
+    const { statusText, levelText, timeText, ageText } = require('./stationText');
+    const { setServerOffset, serverNow } = require('./serverClock');
+    test('a station with no valid reading is not shown as Normal', () => {
+        const s = { status: 'offline', sensorError: true, lastKnownStatus: null, level: null, timestamp: null };
+        expect(statusText(s)).toBe('SENSOR ERROR - NO READING');
+        expect(levelText(s)).toBe('--');
+        expect(timeText(s)).toBe('never');
+    });
+    test('ages use the server clock, not the computer clock', () => {
+        setServerOffset(-10 * 60 * 1000);           // this computer runs 10 minutes fast
+        const updated = serverNow() - 30 * 1000;   // the station reported 30 s ago (server time)
+        expect(ageText(updated)).toBe('30 s ago');
+        setServerOffset(0);
+    });
+});
