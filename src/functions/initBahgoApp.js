@@ -56,15 +56,28 @@ export function initBahgoApp() {
 
     // Show / hide password fields. Assigned with onclick (not addEventListener) so running this
     // setup twice, as React does in development, can't attach two handlers that cancel each other out.
+    // The button remembers its own state (data-shown): some password-manager extensions switch the
+    // field back to hidden right after it is shown, so the field's type alone can't be trusted.
     document.querySelectorAll('[data-show-pass]').forEach(btn => {
-        btn.onclick = () => {
-            const input = document.getElementById(btn.dataset.showPass);
-            if (!input) return;
-            const show = input.type === 'password';
+        const input = document.getElementById(btn.dataset.showPass);
+        if (!input) return;
+        const apply = (show) => {
+            btn.dataset.shown = show ? '1' : '';
             input.type = show ? 'text' : 'password';
             btn.textContent = show ? 'Hide' : 'Show';
             btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
         };
+        btn.onclick = () => apply(!btn.dataset.shown);
+        if (!input._showPassWatcher) {
+            // If something else hides the field while it should be shown, show it again (a few times at most,
+            // so this can never fight an extension forever).
+            let restores = 0;
+            input._showPassWatcher = new MutationObserver(() => {
+                if (btn.dataset.shown && input.type === 'password' && restores < 5) { restores++; input.type = 'text'; }
+            });
+            input._showPassWatcher.observe(input, { attributes: true, attributeFilter: ['type'] });
+            input.addEventListener('focus', () => { restores = 0; });
+        }
     });
 
     const setNewPassBtn = document.getElementById('setNewPassBtn');
