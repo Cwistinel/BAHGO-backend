@@ -41,16 +41,29 @@ exports.removeAdmin = onCall(OPTS, async (req) => {
   const uid = String(req.data?.uid || '');
   if (!uid) throw new HttpsError('invalid-argument', 'Missing user id.');
   if (uid === req.auth.uid) throw new HttpsError('failed-precondition', 'You cannot remove yourself.');
-  let target;
-  try {
-    target = await admin.auth().getUser(uid);
-  } catch (e) {
-    throw new HttpsError('not-found', 'User not found.');
+  const ref = admin.firestore().doc('users/' + uid);
+  const snap = await ref.get();
+  // Find the login account. Older admins may have a list entry whose id doesn't match their
+  // login account, or whose login account is already gone: look them up by email too.
+  const findUser = async (fn) => {
+    try { return await fn(); } catch (e) {
+      if (e.code === 'auth/user-not-found') return null;
+      throw new HttpsError('internal', 'Could not look up the account.');
+    }
+  };
+  let target = await findUser(() => admin.auth().getUser(uid));
+  if (!target && snap.exists && snap.data().email) target = await findUser(() => admin.auth().getUserByEmail(snap.data().email));
+  if (!target && !snap.exists) throw new HttpsError('not-found', 'User not found.');
+  if (target?.customClaims?.role === 'super' || snap.data()?.role === 'Super User') {
+    throw new HttpsError('failed-precondition', 'Super admins cannot be removed.');
   }
-  if (target.customClaims?.role === 'super') throw new HttpsError('failed-precondition', 'Super admins cannot be removed.');
-  await admin.firestore().doc('users/' + uid).delete();
-  await admin.auth().revokeRefreshTokens(uid);
-  await admin.auth().deleteUser(uid);
+  if (target && target.uid === req.auth.uid) throw new HttpsError('failed-precondition', 'You cannot remove yourself.');
+  // The list entry is removed even when the login account no longer exists.
+  if (snap.exists) await ref.delete();
+  if (target) {
+    await admin.auth().revokeRefreshTokens(target.uid);
+    await admin.auth().deleteUser(target.uid);
+  }
   return { ok: true };
 });
 

@@ -256,20 +256,23 @@ export function openPalarEditModal(stationId) {
     }, 100);
 }
 
+// Error messages appear in the site's own toast, not a browser pop-up.
+const showToastLazy = (msg) => import('./notifications').then(({ showToast }) => showToast(msg, 'error'));
+
 export async function savePalarLocation(stationId) {
     const newName = document.getElementById('editStreetName')?.value.trim();
     const newLat = parseFloat(document.getElementById('editLat')?.value);
     const newLng = parseFloat(document.getElementById('editLng')?.value);
     if (!newName) {
-        alert('Please enter street name!');
+        showToastLazy('Please enter a street name.');
         return;
     }
     if (isNaN(newLat) || isNaN(newLng)) {
-        alert('Please enter valid latitude/longitude!');
+        showToastLazy('Please enter a valid latitude and longitude.');
         return;
     }
     if (newLat < 14.51 || newLat > 14.55 || newLng < 121.04 || newLng > 121.09) {
-        alert('Latitude must be 14.51-14.55 and longitude 121.04-121.09 (Taguig).');
+        showToastLazy('Latitude must be 14.51-14.55 and longitude 121.04-121.09 (Taguig).');
         return;
     }
     try {
@@ -284,7 +287,7 @@ export async function savePalarLocation(stationId) {
             showToast(`${stationId} updated - visible to all users`, 'success');
         });
     } catch (err) {
-        alert('Could not save location: ' + err.message);
+        showToastLazy('Could not save location: ' + err.message);
     }
 }
 

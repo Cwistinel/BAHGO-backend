@@ -3,6 +3,7 @@ import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebase';
 import { showToast } from './notifications';
 import { esc } from './escape';
+import { confirmDialog } from './confirmDialog';
 
 export async function loadAdminUsers() {
     const tbody = document.getElementById('adminUsersTableBody');
@@ -28,14 +29,19 @@ export async function loadAdminUsers() {
 }
 
 export async function deleteAdminUser(uid, email) {
-    if (!window.confirm('Delete admin ' + email + '? Their account is removed and they can no longer log in.')) return;
+    const ok = await confirmDialog({
+        title: 'Delete admin?',
+        message: email + ' will be removed and can no longer log in.',
+        confirmLabel: 'Delete'
+    });
+    if (!ok) return;
     try {
         await httpsCallable(functions, 'removeAdmin')({ uid });
         showToast('Admin ' + email + ' removed.', 'success');
-        loadAdminUsers();
     } catch (err) {
         showToast('Delete failed: ' + err.message, 'error');
     }
+    loadAdminUsers();   // refresh either way, so the list always shows what's really saved
 }
 
 export function initSuperUsers() {
