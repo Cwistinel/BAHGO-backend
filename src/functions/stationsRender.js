@@ -1,6 +1,6 @@
 import { state } from '../state';
 import { esc } from './escape';
-import { LOCATION_LABEL, ageLabel, ageClass, severityOf, statusText, stationRows, trendText, rainText, levelText, timeText } from './stationText';
+import { LOCATION_LABEL, ageLabel, ageClass, severityOf, statusText, stationRows, trendText, rainText, levelText, timeText, isReporting } from './stationText';
 import { serverNow } from './serverClock';
 
 export function updateCounts() {
@@ -8,7 +8,8 @@ export function updateCounts() {
     const critical = count('critical');
     const warning = count('warning');
     const normal = state.stations.filter(s => s.status === 'safe').length;
-    const offline = state.stations.filter(s => s.status === 'offline').length;
+    // Device Status counts devices that are / aren't sending updates; a sensor fault on an online device counts as Active.
+    const offline = state.stations.filter(s => !isReporting(s)).length;
     const active = state.stations.length - offline;
 
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
@@ -17,7 +18,7 @@ export function updateCounts() {
     set('normalCount', normal);           set('superNormalCount', normal);
     set('activeCount', active);           set('superActiveCount', active);
     set('offlineCount', offline);         set('superOfflineCount', offline);
-    const atRisk = state.stations.filter(s => s.status === 'offline' && (s.lastKnownStatus === 'critical' || s.lastKnownStatus === 'warning')).length;
+    const atRisk = state.stations.filter(s => !isReporting(s) && (s.lastKnownStatus === 'critical' || s.lastKnownStatus === 'warning')).length;
     const riskNote = atRisk > 0 ? atRisk + ' last known at risk' : '';
     set('offlineRiskNote', riskNote);     set('superOfflineRiskNote', riskNote);
 }

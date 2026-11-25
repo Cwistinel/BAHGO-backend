@@ -62,3 +62,11 @@ describe('no reading and server clock', () => {
         setServerOffset(0);
     });
 });
+
+test('an online device with a sensor fault says "Updated", not "Last seen"', () => {
+    const { ageLabel, ageClass } = require('./stationText');
+    const s = { status: 'offline', sensorError: true, reporting: true, updatedMs: NOW - 5 * S };
+    expect(ageLabel(s, NOW)).toBe('Updated 5 s ago');
+    expect(ageClass(s, NOW)).toBe('');
+    expect(ageLabel({ ...s, reporting: false, updatedMs: NOW - 5 * MIN }, NOW)).toBe('Last seen 5 min ago');
+});

@@ -66,7 +66,9 @@ export function loadStations() {
                     levelStatus = 'warning';
                 }
                 const sensorError = s.Reading_Status === 'error' || noReading;
-                const status = secondsSinceUpdate > OFFLINE_AFTER_SEC || sensorError ? 'offline' : levelStatus;
+                // reporting = the device itself is online (sending updates), even if its water sensor has a fault
+                const reporting = secondsSinceUpdate <= OFFLINE_AFTER_SEC;
+                const status = !reporting || sensorError ? 'offline' : levelStatus;
                 // The app's models: keep the reading, then forecast 30 minutes ahead while online.
                 if (distanceCm > 0) {
                     const rain = s.Rain_Value == null ? NaN : Math.min(1, Math.max(0, (4095 - Number(s.Rain_Value)) / 4095));
@@ -83,6 +85,7 @@ export function loadStations() {
                     rain: rainWord(s),
                     trend: online ? levelTrend(key) : null,
                     status: status,
+                    reporting: reporting,
                     lastKnownStatus: levelStatus,
                     sensorError: sensorError,
                     forecastCm: forecastCm === null ? null : Math.round(forecastCm * 10) / 10,
