@@ -1,6 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import './style.css';
 import './script.js';
+
+// A password box with a Show / Hide button. React re-applies an input's `type` on every keystroke,
+// so the shown/hidden state has to live in React too; changing the type from outside gets undone.
+function PasswordInput({ id, ...props }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="password-wrap">
+      <input id={id} {...props} type={shown ? 'text' : 'password'} />
+      <button type="button" className="show-pass" aria-label={shown ? 'Hide password' : 'Show password'}
+        aria-controls={id} onClick={() => setShown(v => !v)}>{shown ? 'Hide' : 'Show'}</button>
+    </div>
+  );
+}
 
 function App() {
   useEffect(() => {
@@ -59,10 +72,7 @@ function App() {
                 </div>
                 <div className="field">
                   <label htmlFor="loginPass">Password</label>
-                  <div className="password-wrap">
-                    <input type="password" id="loginPass" placeholder="Enter your password" autoComplete="current-password" />
-                    <button type="button" className="show-pass" data-show-pass="loginPass" aria-label="Show password">Show</button>
-                  </div>
+                  <PasswordInput id="loginPass" placeholder="Enter your password" autoComplete="current-password" />
                   <div id="passwordError" className="error-bubble" style={{ display: 'none' }} />
                 </div>
                 <p className="login-note">Forgot your password? Ask the Super User to remove and re-add your account.</p>
@@ -82,8 +92,8 @@ function App() {
           </div>
           <div style={{ padding: '20px 0' }}>
             <p style={{ fontSize: '0.9rem', color: '#6B7280', marginBottom: '16px' }}>Welcome! This is your first login. Please set a new password that only you know.</p>
-            <div className="field"><label htmlFor="newPass1">New Password</label><input type="password" id="newPass1" placeholder="At least 8 characters" autoComplete="new-password" /></div>
-            <div className="field"><label htmlFor="newPass2">Confirm New Password</label><input type="password" id="newPass2" placeholder="Confirm new password" autoComplete="new-password" /></div>
+            <div className="field"><label htmlFor="newPass1">New Password</label><PasswordInput id="newPass1" placeholder="At least 8 characters" autoComplete="new-password" /></div>
+            <div className="field"><label htmlFor="newPass2">Confirm New Password</label><PasswordInput id="newPass2" placeholder="Confirm new password" autoComplete="new-password" /></div>
             <div id="newPassError" className="error-bubble" style={{ display: 'none', background: '#EF4444', color: '#fff', padding: '8px', borderRadius: '6px', marginTop: '8px' }} />
             <button className="btn-login" id="setNewPassBtn" style={{ marginTop: '16px' }}>Set New Password & Continue</button>
           </div>
@@ -281,7 +291,7 @@ function App() {
                 <p style={{ fontSize: '0.85rem', color: '#6B7280', marginBottom: '14px' }}>Create admin with temp password. On first login, admin will set new password only he/she knows.</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '12px', alignItems: 'end' }}>
                   <div className="field" style={{ margin: 0 }}><label htmlFor="newAdminEmail">Admin Email</label><input type="email" id="newAdminEmail" placeholder="newadmin@bahgo.com" /></div>
-                  <div className="field" style={{ margin: 0 }}><label htmlFor="newAdminTempPass">Temp Password</label><div className="password-wrap"><input type="password" id="newAdminTempPass" placeholder="At least 8 characters" autoComplete="new-password" /><button type="button" className="show-pass" data-show-pass="newAdminTempPass" aria-label="Show password">Show</button></div></div>
+                  <div className="field" style={{ margin: 0 }}><label htmlFor="newAdminTempPass">Temp Password</label><PasswordInput id="newAdminTempPass" placeholder="At least 8 characters" autoComplete="new-password" /></div>
                   <button className="btn-login" id="addAdminBtn" style={{ width: 'auto', padding: '12px 20px' }}>Add Admin</button>
                 </div>
                 <div id="addAdminError" className="error-bubble" style={{ display: 'none', background: '#EF4444', color: '#fff', padding: '8px', borderRadius: '6px', marginTop: '10px' }} />
@@ -338,5 +348,4 @@ function App() {
     </>
   );
 }
-
 export default App;
