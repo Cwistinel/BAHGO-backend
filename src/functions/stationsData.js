@@ -6,14 +6,14 @@ import { parseTimestamp } from './parseTimestamp';
 import { renderStations, renderTable, updateCounts } from './stationsRender';
 import { renderTaguigMaps, stationLocations, listenToStationLocations } from './palarMap';
 import { recordReading, forecastLevel, riskScore, scoreStatus, levelTrend } from './floodModel';
-import { severityOf } from './stationText';
 import { serverNow, setServerOffset } from './serverClock';
 
+// Same as the BahGo app (SensorTracker.kt): 37" mount, Warning above 30 cm, Critical above 60 cm.
 export const SENSOR_MOUNT_HEIGHT_CM = 94;
 export const WARN_LEVEL_CM = 30;
 export const CRIT_LEVEL_CM = 60;
 export const OFFLINE_AFTER_SEC = 120;
-const REFRESH_MS = 30 * 1000;  
+const REFRESH_MS = 30 * 1000;   // re-check ages and offline status even when no new data arrives
 
 const BASE_NAMES = {
     'sensordata1': 'Sealion Street',
@@ -21,8 +21,14 @@ const BASE_NAMES = {
     'sensordata3': 'Swingfire Street',
     'sensordata4': 'Striker Street'
 };
-const SEVERITY_RANK = { critical: 0, warning: 1, safe: 2 };
+// Stations always appear in the same order (cards, Detailed List, map): Sealion, Samaritan, Swingfire, Striker.
+const STATION_ORDER = ['sensordata1', 'sensordata2', 'sensordata3', 'sensordata4'];
+const orderOf = (s) => {
+    const i = STATION_ORDER.indexOf(s.id.toLowerCase());
+    return i === -1 ? STATION_ORDER.length : i;
+};
 
+/** Raw rain value (0..4095, 4095 = dry) -> the same words the ESP32 uses. */
 export function rainWord(s) {
     const v = Number(s.Rain_Value);
     if (s.Rain_Value == null || !Number.isFinite(v)) return s.Rain_Status || null;
@@ -41,13 +47,14 @@ export function loadStations() {
             const newStations = Object.entries(data).map(([key, s]) => {
                 const existingStation = state.stations.find(old => old.id === key);
                 const distanceCm = Number(s.Distance_cm);
-                
+                // Distance 0, negative or missing is not a real reading (invalid echo): keep the last level shown.
+                // With no valid reading at all since the page opened, the level is unknown (null), never "0 cm, Normal".
                 const previousLevel = existingStation && existingStation.level !== null ? existingStation.level : null;
                 const actualWaterLevelCm = distanceCm > 0
                     ? Math.max(0, SENSOR_MOUNT_HEIGHT_CM - distanceCm)
                     : previousLevel;
                 const noReading = actualWaterLevelCm === null;
-                
+                // A station that never sent a time can't be shown as up to date: treat it as offline.
                 const finalTimestamp = s.Last_Updated || (existingStation ? existingStation.timestamp : null);
                 const now = serverNow();
                 const lastUpdateMs = finalTimestamp ? parseTimestamp(finalTimestamp) : NaN;
@@ -60,7 +67,7 @@ export function loadStations() {
                 }
                 const sensorError = s.Reading_Status === 'error' || noReading;
                 const status = secondsSinceUpdate > OFFLINE_AFTER_SEC || sensorError ? 'offline' : levelStatus;
-                
+                // The app's models: keep the reading, then forecast 30 minutes ahead while online.
                 if (distanceCm > 0) {
                     const rain = s.Rain_Value == null ? NaN : Math.min(1, Math.max(0, (4095 - Number(s.Rain_Value)) / 4095));
                     recordReading(key, Number.isFinite(lastUpdateMs) ? lastUpdateMs : now, actualWaterLevelCm, rain);
@@ -85,11 +92,8 @@ export function loadStations() {
                     timestamp: finalTimestamp
                 };
             });
-            
-            newStations.sort((a, b) =>
-                SEVERITY_RANK[severityOf(a)] - SEVERITY_RANK[severityOf(b)] ||
-                (a.status === 'offline') - (b.status === 'offline') ||
-                a.name.localeCompare(b.name));
+            // Fixed order, so stations never swap places when their status changes.
+            newStations.sort((a, b) => orderOf(a) - orderOf(b) || a.id.localeCompare(b.id));
             state.stations = newStations;
             renderStations();
             renderTable();
